@@ -1,0 +1,272 @@
+/**
+ * Design Tokens - Single Source of Truth for Design System
+ * These CSS custom properties define the core design language
+ */
+
+:root {
+  /* ===== Spacing System ===== */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 20px;
+  --space-2xl: 24px;
+  --space-3xl: 32px;
+  --space-4xl: 48px;
+
+  /* ===== Border Radius ===== */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* ===== Typography ===== */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial,
+    sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'Source Code Pro', Menlo, Consolas,
+    'DejaVu Sans Mono', monospace;
+
+  --text-xs: 10px;
+  --text-sm: 12px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 18px;
+  --text-2xl: 20px;
+  --text-3xl: 24px;
+
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  --line-tight: 1.25;
+  --line-normal: 1.5;
+  --line-relaxed: 1.75;
+
+  --letter-tight: -0.02em;
+  --letter-normal: 0;
+  --letter-wide: 0.05em;
+
+  /* ===== Shadows ===== */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+
+  /* ===== Transitions ===== */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slower: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ===== Z-Index Scale ===== */
+  --z-base: 0;
+  --z-dropdown: 1000;
+  --z-sticky: 1100;
+  --z-fixed: 1200;
+  --z-modal-backdrop: 1300;
+  --z-modal: 1400;
+  --z-popover: 1500;
+  --z-tooltip: 1600;
+  --z-notification: 1700;
+  --z-max: 9999;
+
+  /* ===== Layout ===== */
+  --popup-min-width: 380px;
+  --popup-max-width: 600px;
+  --popup-min-height: 500px;
+  --popup-max-height: 700px;
+}
+
+/* ===== Light Theme (Default) ===== */
+:root,
+[data-theme='light'] {
+  /* Backgrounds */
+  --bg-base: #ffffff;
+  --bg-elevated: #f6f8fa;
+  --bg-card: #ffffff;
+  --bg-hover: #f3f4f6;
+  --bg-active: #e5e7eb;
+  --bg-input: #ffffff;
+  --bg-overlay: rgba(0, 0, 0, 0.5);
+
+  /* Text */
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --text-tertiary: #9ca3af;
+  --text-disabled: #d1d5db;
+  --text-inverse: #ffffff;
+  --text-placeholder: #9ca3af;
+
+  /* Borders */
+  --border-subtle: #e5e7eb;
+  --border-default: #d1d5db;
+  --border-strong: #9ca3af;
+  --border-inverse: #374151;
+
+  /* Primary - Blue */
+  --primary-50: #eff6ff;
+  --primary-100: #dbeafe;
+  --primary-200: #bfdbfe;
+  --primary-300: #93c5fd;
+  --primary-400: #60a5fa;
+  --primary-500: #3b82f6;
+  --primary-600: #2563eb;
+  --primary-700: #1d4ed8;
+  --primary-800: #1e40af;
+  --primary-900: #1e3a8a;
+
+  --primary: var(--primary-600);
+  --primary-hover: var(--primary-700);
+  --primary-dim: var(--primary-100);
+  --primary-glow: rgba(59, 130, 246, 0.3);
+
+  /* Semantic Colors */
+  --success-light: #d1fae5;
+  --success: #10b981;
+  --success-dark: #059669;
+
+  --warning-light: #fef3c7;
+  --warning: #f59e0b;
+  --warning-dark: #d97706;
+
+  --error-light: #fee2e2;
+  --error: #ef4444;
+  --error-dark: #dc2626;
+
+  --info-light: #dbeafe;
+  --info: #3b82f6;
+  --info-dark: #2563eb;
+
+  /* Status Indicator Colors */
+  --status-connected: var(--success);
+  --status-checking: var(--warning);
+  --status-error: var(--error);
+
+  /* Shadows - Light Theme Specific */
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --shadow-primary: 0 4px 16px rgba(59, 130, 246, 0.15);
+  --shadow-focus: 0 0 0 3px var(--primary-200);
+}
+
+/* ===== Dark Theme ===== */
+[data-theme='dark'] {
+  /* Backgrounds */
+  --bg-base: #0a0e1a;
+  --bg-elevated: #0f1419;
+  --bg-card: #141922;
+  --bg-hover: #1a1f2e;
+  --bg-active: #21262d;
+  --bg-input: #0d1117;
+  --bg-overlay: rgba(1, 4, 9, 0.8);
+
+  /* Text */
+  --text-primary: #f0f6fc;
+  --text-secondary: #8b949e;
+  --text-tertiary: #6e7681;
+  --text-disabled: #484f58;
+  --text-inverse: #0a0e1a;
+  --text-placeholder: #6e7681;
+
+  /* Borders */
+  --border-subtle: #21262d;
+  --border-default: #30363d;
+  --border-strong: #484f58;
+  --border-inverse: #d0d7de;
+
+  /* Primary - Blue (adjusted for dark) */
+  --primary-50: #0a2540;
+  --primary-100: #0f3a5f;
+  --primary-200: #1d4ed8;
+  --primary-300: #3b82f6;
+  --primary-400: #60a5fa;
+  --primary-500: #79c0ff;
+  --primary-600: #a8daff;
+  --primary-700: #c5e5ff;
+  --primary-800: #e1f0ff;
+  --primary-900: #f0f9ff;
+
+  --primary: #58a6ff;
+  --primary-hover: #79c0ff;
+  --primary-dim: rgba(88, 166, 255, 0.1);
+  --primary-glow: rgba(88, 166, 255, 0.4);
+
+  /* Semantic Colors - Dark adjusted */
+  --success-light: rgba(46, 160, 67, 0.15);
+  --success: #3fb950;
+  --success-dark: #56d364;
+
+  --warning-light: rgba(210, 153, 34, 0.15);
+  --warning: #d29922;
+  --warning-dark: #e3b341;
+
+  --error-light: rgba(248, 81, 73, 0.15);
+  --error: #f85149;
+  --error-dark: #ff7b72;
+
+  --info-light: rgba(88, 166, 255, 0.15);
+  --info: #58a6ff;
+  --info-dark: #79c0ff;
+
+  /* Shadows - Dark Theme Specific */
+  --shadow-color: rgba(1, 4, 9, 0.85);
+  --shadow-primary: 0 4px 16px rgba(88, 166, 255, 0.2);
+  --shadow-focus: 0 0 0 3px rgba(88, 166, 255, 0.3);
+}
+
+/* ===== Accessibility: Reduced Motion ===== */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-fast: 0ms;
+    --transition-base: 0ms;
+    --transition-slow: 0ms;
+    --transition-slower: 0ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ===== Accessibility: High Contrast (Windows) ===== */
+@media (prefers-contrast: high) {
+  :root {
+    --border-default: #000000;
+    --border-strong: #000000;
+  }
+
+  [data-theme='dark'] {
+    --border-default: #ffffff;
+    --border-strong: #ffffff;
+  }
+}
+
+/* ===== Accessibility: Screen Reader Only ===== */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.sr-only-focusable:focus,
+.sr-only-focusable:active {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}

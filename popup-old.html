@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manga Processor</title>
+  <link rel="stylesheet" href="styles/popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Server Connection -->
+    <div class="input-group">
+      <div class="input-wrapper">
+        <input
+          type="text"
+          id="serverUrl"
+          class="input"
+          placeholder="Server URL"
+          value="http://localhost:1420"
+        >
+        <div id="connectionStatus" class="status-indicator checking">
+          <span class="status-dot"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Settings -->
+    <div class="settings-main">
+      <!-- Translate Model -->
+      <div class="field">
+        <label class="field-label">Translate Model</label>
+        <select id="translateModel" class="select">
+          <option value="gemini-flash-latest">Gemini Flash Latest</option>
+          <option value="gemini-2.5-flash">Gemini Flash</option>
+          <option value="gemini-flash-lite-latest">Gemini Flash Lite Latest</option>
+          <option value="gemini-2.5-pro">Gemini Pro</option>
+        </select>
+      </div>
+
+      <!-- Include Free Text -->
+      <div class="field">
+        <label class="field-label">Include Free Text</label>
+        <label class="toggle">
+          <input type="checkbox" id="includeFreeText">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Process Button -->
+    <button id="processBtn" class="btn-primary" disabled>
+      <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+      </svg>
+      <span>Process Page</span>
+      <kbd class="kbd">⌘M</kbd>
+    </button>
+
+    <!-- Advanced Settings -->
+    <div class="collapsible">
+      <button id="advancedToggle" class="collapsible-trigger">
+        <span>Advanced Settings</span>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      <div id="advancedContent" class="collapsible-content">
+        <div>
+          <!-- API Keys -->
+          <div class="field">
+            <label class="field-label">Gemini API Keys</label>
+          </div>
+          <div id="apiKeysList" class="api-keys-list"></div>
+          <button id="addApiKey" class="btn-text">
+            <svg class="btn-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="16"/>
+              <line x1="8" y1="12" x2="16" y2="12"/>
+            </svg>
+            Add API Key
+          </button>
+
+          <!-- Boolean Options -->
+          <div class="field">
+            <label class="field-label">Banana Mode</label>
+            <label class="toggle">
+              <input type="checkbox" id="bananaMode">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="field">
+            <label class="field-label">Text Stroke</label>
+            <label class="toggle">
+              <input type="checkbox" id="textStroke">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="field">
+            <label class="field-label">Blur Free Text Background</label>
+            <label class="toggle">
+              <input type="checkbox" id="blurFreeTextBg">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="field">
+            <label class="field-label">Cache</label>
+            <label class="toggle">
+              <input type="checkbox" id="cache" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="field">
+            <label class="field-label">Metrics Detail</label>
+            <label class="toggle">
+              <input type="checkbox" id="metricsDetail" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- View Stats -->
+    <button id="viewStats" class="btn-ghost" disabled>
+      <svg class="btn-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="20" x2="12" y2="10"/>
+        <line x1="18" y1="20" x2="18" y2="4"/>
+        <line x1="6" y1="20" x2="6" y2="16"/>
+      </svg>
+      View Statistics
+    </button>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast">
+    <span class="toast-icon"></span>
+    <span class="toast-message"></span>
+  </div>
+
+  <!-- Processing Overlay -->
+  <div id="processing" class="processing">
+    <div class="processing-content">
+      <div class="spinner"></div>
+      <div class="processing-text">Processing...</div>
+      <div class="processing-detail">Initializing...</div>
+      <div class="progress">
+        <div id="progress" class="progress-bar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Analytics Panel -->
+  <div id="analytics" class="analytics">
+    <div class="analytics-header">
+      <h2>Statistics</h2>
+      <button id="closeAnalytics" class="btn-close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div id="analyticsContent" class="analytics-content"></div>
+  </div>
+
+  <script src="scripts/popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manga Text Processor</title>
+  <link rel="stylesheet" href="src/styles/tokens.css">
+  <link rel="stylesheet" href="src/styles/popup.css">
+</head>
+<body data-theme="dark">
+  <div class="app" role="application" aria-label="Manga Text Processor">
+    <!-- ===== MAIN CONTENT ===== -->
+    <main id="main-content" class="main" role="main">
+      <h1 class="sr-only">Manga Text Processor</h1>
+
+      <!-- Server URL Configuration with inline status -->
+      <section class="server-config" aria-labelledby="server-config-label">
+        <label for="serverUrl" id="server-config-label" class="sr-only">Server URL</label>
+        <div class="server-url-wrapper">
+          <input
+            type="url"
+            id="serverUrl"
+            class="server-url-input"
+            placeholder="http://localhost:1420"
+            value="http://localhost:1420"
+            aria-describedby="server-url-help"
+            aria-required="true"
+          >
+          <div class="server-status">
+            <div
+              id="connectionStatus"
+              class="status-dot checking"
+              role="status"
+              aria-live="polite"
+              aria-label="Server connection status: checking">
+            </div>
+            <span class="status-label" id="connectionLabel">Checking...</span>
+          </div>
+        </div>
+        <span id="server-url-help" class="sr-only">Enter the URL of your local manga processing server</span>
+      </section>
+
+      <!-- Keyboard Shortcut Info -->
+      <section class="shortcut-info" aria-labelledby="shortcut-heading">
+        <h2 id="shortcut-heading" class="sr-only">Process Images</h2>
+        <div class="shortcut-banner">
+          <div class="shortcut-content">
+            <span class="shortcut-text">Press</span>
+            <kbd class="shortcut-key">Ctrl</kbd>
+            <span class="shortcut-plus">+</span>
+            <kbd class="shortcut-key">Shift</kbd>
+            <span class="shortcut-plus">+</span>
+            <kbd class="shortcut-key">M</kbd>
+            <span class="shortcut-text">to process</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab Navigation -->
+      <nav class="tabs" role="tablist" aria-label="Settings navigation">
+        <button
+          id="tab-settings"
+          class="tab active"
+          role="tab"
+          aria-selected="true"
+          aria-controls="panel-settings"
+          tabindex="0">
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 1v6m0 6v6M5.6 5.6l4.2 4.2m4.8 4.8l4.2 4.2M1 12h6m6 0h6M5.6 18.4l4.2-4.2m4.8-4.8l4.2-4.2"/>
+          </svg>
+          <span>Settings</span>
+        </button>
+        <button
+          id="tab-apiKeys"
+          class="tab"
+          role="tab"
+          aria-selected="false"
+          aria-controls="panel-apiKeys"
+          tabindex="-1">
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+          </svg>
+          <span>API Keys</span>
+        </button>
+        <button
+          id="tab-stats"
+          class="tab"
+          role="tab"
+          aria-selected="false"
+          aria-controls="panel-stats"
+          tabindex="-1"
+          disabled>
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M3 3v18h18M18 17V9m-5 8V5m-5 12v-3"/>
+          </svg>
+          <span>Statistics</span>
+        </button>
+      </nav>
+
+      <!-- Tab Panels -->
+      <div class="tab-content">
+        <!-- Settings Panel -->
+        <div
+          id="panel-settings"
+          class="tab-panel active"
+          role="tabpanel"
+          aria-labelledby="tab-settings"
+          tabindex="0">
+
+          <div class="settings-group">
+            <h3 class="settings-group-title">Translation Settings</h3>
+
+            <div class="field">
+              <label for="translateModel" class="field-label">
+                Translation Model
+                <span class="field-help">Choose the AI model for translation</span>
+              </label>
+              <div class="select-wrapper">
+                <select id="translateModel" class="select" aria-describedby="translate-model-help">
+                  <option value="gemini-flash-latest">Gemini Flash — Latest</option>
+                  <option value="gemini-2.5-flash">Gemini Flash 2.5</option>
+                  <option value="gemini-flash-lite-latest">Gemini Flash Lite — Latest</option>
+                  <option value="gemini-2.5-pro">Gemini Pro 2.5</option>
+                </select>
+              </div>
+              <span id="translate-model-help" class="sr-only">
+                Faster models process quicker but may be less accurate
+              </span>
+            </div>
+
+            <div class="field field-row">
+              <label for="includeFreeText" class="field-label">
+                Include Free Text
+                <span class="field-help">Translate unstructured text in images</span>
+              </label>
+              <label class="toggle" aria-label="Toggle include free text">
+                <input type="checkbox" id="includeFreeText" aria-describedby="free-text-help">
+                <span class="toggle-slider" aria-hidden="true"></span>
+              </label>
+              <span id="free-text-help" class="sr-only">
+                When enabled, processes free-form text in addition to speech bubbles
+              </span>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <h3 class="settings-group-title">Rendering Options</h3>
+
+            <div class="field field-row">
+              <label for="textStroke" class="field-label">
+                Text Stroke
+                <span class="field-help">Add outline to translated text</span>
+              </label>
+              <label class="toggle" aria-label="Toggle text stroke">
+                <input type="checkbox" id="textStroke">
+                <span class="toggle-slider" aria-hidden="true"></span>
+              </label>
+            </div>
+
+            <div class="field field-row">
+              <label for="blurFreeTextBg" class="field-label">
+                Blur Free Text Background
+                <span class="field-help">Apply blur effect behind free text</span>
+              </label>
+              <label class="toggle" aria-label="Toggle blur free text background">
+                <input type="checkbox" id="blurFreeTextBg">
+                <span class="toggle-slider" aria-hidden="true"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <h3 class="settings-group-title">Advanced Options</h3>
+
+            <div class="field field-row">
+              <label for="bananaMode" class="field-label">
+                Banana Mode
+                <span class="field-help">Enhanced detection for complex layouts</span>
+              </label>
+              <label class="toggle" aria-label="Toggle banana mode">
+                <input type="checkbox" id="bananaMode">
+                <span class="toggle-slider" aria-hidden="true"></span>
+              </label>
+            </div>
+
+            <div class="field field-row">
+              <label for="cache" class="field-label">
+                Enable Cache
+                <span class="field-help">Cache translations for faster reprocessing</span>
+              </label>
+              <label class="toggle" aria-label="Toggle cache">
+                <input type="checkbox" id="cache" checked>
+                <span class="toggle-slider" aria-hidden="true"></span>
+              </label>
+            </div>
+
+            <div class="field field-row">
+              <label for="metricsDetail" class="field-label">
+                Detailed Metrics
+                <span class="field-help">Show comprehensive processing statistics</span>
+              </label>
+              <label class="toggle" aria-label="Toggle detailed metrics">
+                <input type="checkbox" id="metricsDetail" checked>
+                <span class="toggle-slider" aria-hidden="true"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- API Keys Panel -->
+        <div
+          id="panel-apiKeys"
+          class="tab-panel"
+          role="tabpanel"
+          aria-labelledby="tab-apiKeys"
+          tabindex="0"
+          hidden>
+
+          <div class="api-keys-header">
+            <h3 class="settings-group-title">Gemini API Keys</h3>
+            <p class="help-text">
+              Add one or more Google Gemini API keys for translation. Keys are rotated automatically.
+            </p>
+          </div>
+
+          <div id="apiKeysList" class="api-keys-list" role="list" aria-label="API Keys"></div>
+
+          <button
+            id="addApiKey"
+            class="btn-secondary"
+            type="button"
+            aria-label="Add new API key">
+            <svg class="btn-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="16"/>
+              <line x1="8" y1="12" x2="16" y2="12"/>
+            </svg>
+            Add API Key
+          </button>
+
+          <div class="api-keys-footer">
+            <a
+              href="https://makersuite.google.com/app/apikey"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="link-external">
+              Get API Key from Google AI Studio
+              <svg class="icon-external" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+
+        <!-- Statistics Panel -->
+        <div
+          id="panel-stats"
+          class="tab-panel"
+          role="tabpanel"
+          aria-labelledby="tab-stats"
+          tabindex="0"
+          hidden>
+
+          <div id="statsContent" class="stats-content">
+            <div class="empty-state">
+              <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M3 3v18h18M18 17V9m-5 8V5m-5 12v-3"/>
+              </svg>
+              <h3 class="empty-title">No Statistics Available</h3>
+              <p class="empty-description">
+                Process some manga images to see detailed statistics and analytics.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ===== TOAST NOTIFICATIONS ===== -->
+  <div
+    id="toast"
+    class="toast"
+    role="status"
+    aria-live="polite"
+    aria-atomic="true"
+    hidden>
+    <span class="toast-icon" aria-hidden="true"></span>
+    <span class="toast-message"></span>
+  </div>
+
+  <!-- ===== PROCESSING OVERLAY ===== -->
+  <div
+    id="processingOverlay"
+    class="processing-overlay"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="processing-title"
+    hidden>
+    <div class="processing-content">
+      <div class="spinner" aria-hidden="true"></div>
+      <h2 id="processing-title" class="processing-title">Processing Images</h2>
+      <p id="processingDetail" class="processing-detail">Initializing...</p>
+      <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+        <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+      </div>
+      <p class="processing-hint">This may take a few moments</p>
+    </div>
+  </div>
+
+  <script type="module" src="src/popup.ts"></script>
+</body>
+</html>

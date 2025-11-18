@@ -1,0 +1,27 @@
+{
+  "name": "manga-text-processor",
+  "version": "1.0.0",
+  "description": "Professional manga text detection, translation, and rendering",
+  "type": "module",
+  "scripts": {
+    "dev": "vite build --watch --mode development",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint . --ext .ts,.js",
+    "format": "prettier --write \"src/**/*.{ts,js,css,html}\""
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.268",
+    "@types/node": "^20.12.7",
+    "@typescript-eslint/eslint-plugin": "^7.7.0",
+    "@typescript-eslint/parser": "^7.7.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.2.5",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.10",
+    "vite-plugin-static-copy": "^1.0.4"
+  },
+  "dependencies": {}
+}
