@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="icon_c.webp" alt="Manga Text Processor" width="128">
+</p>
+
 # Manga Text Processor - Chrome Extension
 
 Chrome extension frontend for manga text detection, translation, and rendering. Communicates with the manga_ocr.rs backend server.
@@ -31,8 +35,8 @@ This extension provides a browser-based interface for processing manga images di
 ### Build from Source
 
 ```bash
-npm install
-npm run build
+bun install
+bun run build
 ```
 
 ### Load in Chrome
@@ -71,7 +75,8 @@ The extension stores settings locally via Chrome storage API. API keys are store
 
 ## Technical Stack
 
-- **Build**: Vite + TypeScript
+- **Runtime**: Bun
+- **Build**: Vite + TypeScript + esbuild
 - **Target**: Chrome Manifest V3
 - **API**: Chrome Extensions API (storage, scripting, activeTab)
 - **Communication**: Fetch API to backend server
@@ -94,21 +99,21 @@ The extension stores settings locally via Chrome storage API. API keys are store
 - Ensure images are accessible (no CORS restrictions)
 
 **Extension not loading:**
-- Rebuild: `npm run build`
+- Rebuild: `bun run build`
 - Reload extension in chrome://extensions/
-- Check for TypeScript errors: `npm run type-check`
+- Check for TypeScript errors: `bun run type-check`
 
 ## Development
 
 ```bash
 # Watch mode
-npm run dev
+bun run dev
 
 # Type checking
-npm run type-check
+bun run type-check
 
 # Linting
-npm run lint
+bun run lint
 ```
 
 ## Disclaimer
