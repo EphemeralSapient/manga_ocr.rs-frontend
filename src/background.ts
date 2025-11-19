@@ -66,6 +66,19 @@ chrome.commands.onCommand.addListener(async (command) => {
 chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) => {
   console.log('[BACKGROUND] Message received:', message);
 
+  // Handle image fetch requests from content script (bypasses CORS)
+  if (message.action === 'fetch-image' && message.url) {
+    fetchImageAsBase64(message.url)
+      .then((base64) => {
+        sendResponse({ success: true, base64 });
+      })
+      .catch((error) => {
+        console.error('[BACKGROUND] Failed to fetch image:', error);
+        sendResponse({ success: false, error: error.message });
+      });
+    return true; // Async response
+  }
+
   // Forward processing updates to popup if it's open
   const forwardActions = ['processing-update', 'processing-complete', 'processing-error'];
 
@@ -79,6 +92,32 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) =
   sendResponse({ status: 'received' });
   return false;
 });
+
+/**
+ * Fetch image from URL and return as base64 (bypasses CORS in background script)
+ */
+async function fetchImageAsBase64(url: string): Promise<string> {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Fetch failed: ${response.status} ${response.statusText}`);
+  }
+
+  const blob = await response.blob();
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+      } else {
+        reject(new Error('Failed to convert to base64'));
+      }
+    };
+    reader.onerror = () => reject(new Error('FileReader error'));
+    reader.readAsDataURL(blob);
+  });
+}
 
 /**
  * Initialize default settings on installation

@@ -6,12 +6,20 @@
   "permissions": [
     "activeTab",
     "storage",
-    "scripting"
+    "scripting",
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess"
   ],
   "host_permissions": [
-    "http://localhost:*/*",
-    "http://127.0.0.1:*/*"
+    "<all_urls>"
   ],
+  "declarative_net_request": {
+    "rule_resources": [{
+      "id": "cors_bypass_ruleset",
+      "enabled": true,
+      "path": "rules.json"
+    }]
+  },
   "background": {
     "service_worker": "scripts/background.js"
   },

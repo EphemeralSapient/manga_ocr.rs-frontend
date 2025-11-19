@@ -69,6 +69,7 @@ export interface Message {
   analytics?: Analytics;
   error?: string;
   result?: ProcessResult;
+  url?: string;
 }
 
 export type Theme = 'light' | 'dark';

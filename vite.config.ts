@@ -64,6 +64,10 @@ export default defineConfig({
           dest: '.',
         },
         {
+          src: 'rules.json',
+          dest: '.',
+        },
+        {
           src: 'icons/*.png',
           dest: 'icons',
         },

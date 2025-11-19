@@ -297,11 +297,55 @@ async function processPageImages(config: ProcessConfig) {
 }
 
 /**
- * Convert img element to blob
+ * Convert img element to blob using background script (bypasses CORS)
  */
 async function imageToBlob(img: HTMLImageElement): Promise<Blob> {
+  const imageUrl = img.src;
+
+  // Handle data URLs directly
+  if (imageUrl.startsWith('data:')) {
+    return dataUrlToBlob(imageUrl);
+  }
+
+  // Handle blob URLs directly
+  if (imageUrl.startsWith('blob:')) {
+    const response = await fetch(imageUrl);
+    return response.blob();
+  }
+
+  // Use background script to fetch (bypasses CORS)
+  const response = await chrome.runtime.sendMessage({
+    action: 'fetch-image',
+    url: imageUrl,
+  });
+
+  if (!response.success) {
+    throw new Error(`Background fetch failed: ${response.error}`);
+  }
+
+  // Convert base64 data URL to blob
+  const blob = dataUrlToBlob(response.base64);
+
+  // If already PNG, return directly
+  if (blob.type === 'image/png') {
+    return blob;
+  }
+
+  // Convert to PNG via canvas using blob URL (won't taint canvas)
+  return await convertBlobToPng(blob, img.naturalWidth || img.width, img.naturalHeight || img.height);
+}
+
+/**
+ * Convert a blob to PNG format using canvas
+ */
+async function convertBlobToPng(blob: Blob, width: number, height: number): Promise<Blob> {
   return new Promise((resolve, reject) => {
-    try {
+    const blobUrl = URL.createObjectURL(blob);
+    const tempImg = new Image();
+
+    tempImg.onload = () => {
+      URL.revokeObjectURL(blobUrl);
+
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
 
@@ -310,63 +354,47 @@ async function imageToBlob(img: HTMLImageElement): Promise<Blob> {
         return;
       }
 
-      canvas.width = img.naturalWidth || img.width;
-      canvas.height = img.naturalHeight || img.height;
+      canvas.width = width || tempImg.naturalWidth;
+      canvas.height = height || tempImg.naturalHeight;
 
-      // Handle CORS
-      const crossOriginImg = new Image();
-      crossOriginImg.crossOrigin = 'anonymous';
+      ctx.drawImage(tempImg, 0, 0);
 
-      crossOriginImg.onload = () => {
-        try {
-          ctx.drawImage(crossOriginImg, 0, 0);
-          canvas.toBlob((blob) => {
-            if (blob) {
-              resolve(blob);
-            } else {
-              reject(new Error('Failed to create blob'));
-            }
-          }, 'image/png');
-        } catch (error) {
-          // CORS fallback
-          console.warn('[CONTENT] CORS failed, trying original image...');
-          try {
-            ctx.drawImage(img, 0, 0);
-            canvas.toBlob((blob) => {
-              if (blob) {
-                resolve(blob);
-              } else {
-                reject(new Error('Failed to create blob'));
-              }
-            }, 'image/png');
-          } catch (fallbackError) {
-            reject(new Error(`Canvas error: ${(fallbackError as Error).message}`));
-          }
+      canvas.toBlob((pngBlob) => {
+        if (pngBlob) {
+          resolve(pngBlob);
+        } else {
+          // Return original blob if PNG conversion fails
+          resolve(blob);
         }
-      };
+      }, 'image/png');
+    };
 
-      crossOriginImg.onerror = () => {
-        // Fallback to original image
-        console.warn('[CONTENT] Image load failed, using original...');
-        try {
-          ctx.drawImage(img, 0, 0);
-          canvas.toBlob((blob) => {
-            if (blob) {
-              resolve(blob);
-            } else {
-              reject(new Error('Failed to create blob'));
-            }
-          }, 'image/png');
-        } catch (error) {
-          reject(new Error(`Canvas error: ${(error as Error).message}`));
-        }
-      };
+    tempImg.onerror = () => {
+      URL.revokeObjectURL(blobUrl);
+      // Return original blob if image load fails
+      resolve(blob);
+    };
 
-      crossOriginImg.src = img.src;
-    } catch (error) {
-      reject(error);
-    }
+    tempImg.src = blobUrl;
   });
+}
+
+/**
+ * Convert data URL to blob
+ */
+function dataUrlToBlob(dataUrl: string): Blob {
+  const parts = dataUrl.split(',');
+  const mimeMatch = parts[0].match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+  const bstr = atob(parts[1]);
+  const n = bstr.length;
+  const u8arr = new Uint8Array(n);
+
+  for (let i = 0; i < n; i++) {
+    u8arr[i] = bstr.charCodeAt(i);
+  }
+
+  return new Blob([u8arr], { type: mime });
 }
 
 /**
