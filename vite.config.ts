@@ -7,6 +7,9 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    target: 'esnext',
+    modulePreload: false,
+    cssCodeSplit: true,
     rollupOptions: {
       input: {
         popup: resolve(__dirname, 'popup.html'),
@@ -29,10 +32,29 @@ export default defineConfig({
           }
           return 'assets/[name]-[hash][extname]';
         },
+        compact: true,
+        generatedCode: {
+          constBindings: true,
+          arrowFunctions: true,
+          objectShorthand: true,
+        },
+      },
+      treeshake: {
+        moduleSideEffects: true,
+        propertyReadSideEffects: false,
       },
     },
-    sourcemap: process.env.NODE_ENV === 'development' ? 'inline' : false,
-    minify: process.env.NODE_ENV === 'production',
+    sourcemap: false,
+    minify: 'esbuild',
+    cssMinify: 'esbuild',
+  },
+  esbuild: {
+    drop: ['debugger'],
+    legalComments: 'none',
+    treeShaking: true,
+    minifyIdentifiers: true,
+    minifySyntax: true,
+    minifyWhitespace: true,
   },
   plugins: [
     viteStaticCopy({
@@ -42,7 +64,7 @@ export default defineConfig({
           dest: '.',
         },
         {
-          src: 'icons/*',
+          src: 'icons/*.png',
           dest: 'icons',
         },
       ],

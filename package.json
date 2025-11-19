@@ -4,12 +4,12 @@
   "description": "Professional manga text detection, translation, and rendering",
   "type": "module",
   "scripts": {
-    "dev": "vite build --watch --mode development",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
-    "type-check": "tsc --noEmit",
-    "lint": "eslint . --ext .ts,.js",
-    "format": "prettier --write \"src/**/*.{ts,js,css,html}\""
+    "dev": "bun run --bun vite build --watch --mode development",
+    "build": "bun run --bun tsc && bun run --bun vite build",
+    "preview": "bun run --bun vite preview",
+    "type-check": "bun run --bun tsc --noEmit",
+    "lint": "bun run --bun eslint . --ext .ts,.js",
+    "format": "bun run --bun prettier --write \"src/**/*.{ts,js,css,html}\""
   },
   "devDependencies": {
     "@types/chrome": "^0.0.268",
