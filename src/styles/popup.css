@@ -10,6 +10,56 @@
   box-sizing: border-box;
 }
 
+/* ===== Custom Scrollbar - Elegant Minimal ===== */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: rgba(59, 130, 246, 0.4);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Light theme scrollbar */
+[data-theme='light'] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.22);
+}
+
+[data-theme='light'] ::-webkit-scrollbar-thumb:active {
+  background: rgba(59, 130, 246, 0.4);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+
+[data-theme='light'] * {
+  scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
+}
+
 body {
   font-family: var(--font-sans);
   font-size: var(--text-base);
@@ -370,7 +420,6 @@ body {
   border-radius: var(--radius-lg);
   transition: all var(--transition-base);
   position: relative;
-  overflow: hidden;
 }
 
 .settings-group::before {
@@ -438,15 +487,16 @@ body {
   color: var(--text-secondary);
 }
 
-/* Select Dropdown - Professional Custom Design */
-.select-wrapper {
+/* Custom Dropdown - Professional Design with Animations */
+.custom-dropdown {
   position: relative;
-  display: block;
+  width: 100%;
 }
 
-.select {
+.dropdown-trigger {
   width: 100%;
-  padding: var(--space-md) var(--space-3xl) var(--space-md) var(--space-md);
+  padding: var(--space-md);
+  padding-right: var(--space-3xl);
   background: linear-gradient(
     135deg,
     var(--bg-input) 0%,
@@ -459,29 +509,17 @@ body {
   font-weight: var(--font-medium);
   cursor: pointer;
   transition: all var(--transition-base);
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background-image:
-    url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238b949e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"),
-    linear-gradient(135deg, var(--bg-input) 0%, var(--bg-elevated) 100%);
-  background-repeat: no-repeat, no-repeat;
-  background-position: right var(--space-md) center, 0 0;
-  background-size: 14px, 100%;
-  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
   box-shadow:
     0 1px 3px rgba(0, 0, 0, 0.08),
     0 1px 0 rgba(255, 255, 255, 0.02),
     inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
-[data-theme='light'] .select {
-  background-image:
-    url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"),
-    linear-gradient(135deg, var(--bg-input) 0%, var(--bg-elevated) 100%);
-}
-
-.select:hover {
+.dropdown-trigger:hover {
   border-color: var(--border-strong);
   transform: translateY(-1px);
   box-shadow:
@@ -490,58 +528,120 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-.select:focus {
+.dropdown-trigger:focus {
   outline: none;
   border-color: var(--primary);
-  transform: translateY(0);
   box-shadow:
     var(--shadow-focus),
-    0 4px 12px rgba(59, 130, 246, 0.2),
-    0 1px 0 rgba(255, 255, 255, 0.02),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  background-image:
-    url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%2358a6ff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"),
-    linear-gradient(135deg, var(--bg-input) 0%, var(--bg-elevated) 100%);
+    0 4px 12px rgba(59, 130, 246, 0.2);
 }
 
-.select:active {
-  transform: translateY(0);
+.dropdown-trigger[aria-expanded="true"] {
+  border-color: var(--primary);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
-.select option {
+.dropdown-selected {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdown-arrow {
+  width: 16px;
+  height: 16px;
+  color: var(--text-secondary);
+  transition: transform var(--transition-base);
+  flex-shrink: 0;
+}
+
+.dropdown-trigger[aria-expanded="true"] .dropdown-arrow {
+  transform: rotate(180deg);
+  color: var(--primary);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
   background: var(--bg-card);
-  color: var(--text-primary);
-  padding: var(--space-lg) var(--space-md);
-  font-weight: var(--font-medium);
-  font-size: var(--text-sm);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--primary);
+  border-top: none;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  list-style: none;
+  margin: 0;
+  padding: var(--space-xs) 0;
+  z-index: 100;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.15),
+    0 4px 8px rgba(0, 0, 0, 0.1);
+
+  /* Animation - hidden by default */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px) scaleY(0.95);
+  transform-origin: top center;
+  transition:
+    opacity var(--transition-fast),
+    transform var(--transition-fast),
+    visibility 0s var(--transition-fast);
+}
+
+.custom-dropdown.open .dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scaleY(1);
+  transition:
+    opacity var(--transition-fast),
+    transform var(--transition-fast) cubic-bezier(0.34, 1.56, 0.64, 1),
+    visibility 0s 0s;
+}
+
+.dropdown-item {
+  padding: var(--space-md) var(--space-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
   transition: all var(--transition-fast);
-  line-height: var(--line-normal);
-}
-
-/* Enhanced option hover/selection styling */
-.select option:hover {
-  background: var(--bg-hover);
   color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
 }
 
-.select option:checked,
-.select option:focus {
-  background: linear-gradient(
-    90deg,
-    var(--primary-dim) 0%,
-    rgba(88, 166, 255, 0.05) 100%
-  );
-  color: var(--primary);
-  font-weight: var(--font-semibold);
-  position: relative;
+.dropdown-item:hover {
+  background: var(--bg-hover);
+  padding-left: calc(var(--space-lg) + 4px);
 }
 
-.select option:checked::before {
-  content: '✓ ';
+.dropdown-item.selected {
   color: var(--primary);
-  font-weight: var(--font-bold);
-  margin-right: var(--space-xs);
+  background: var(--primary-dim);
+}
+
+.dropdown-item.selected:hover {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.dropdown-item-text {
+  flex: 1;
+}
+
+.dropdown-check {
+  width: 14px;
+  height: 14px;
+  color: var(--primary);
+  opacity: 0;
+  transform: scale(0.5);
+  transition: all var(--transition-fast);
+}
+
+.dropdown-item.selected .dropdown-check {
+  opacity: 1;
+  transform: scale(1);
 }
 
 /* Toggle Switch */
@@ -613,6 +713,36 @@ body {
   font-size: var(--text-sm);
   color: var(--text-secondary);
   line-height: var(--line-relaxed);
+}
+
+.api-keys-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-sm);
+}
+
+.api-keys-note .note-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--primary);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.api-keys-note span {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: var(--line-relaxed);
+}
+
+.api-keys-note strong {
+  color: var(--primary);
+  font-weight: var(--font-semibold);
 }
 
 .api-keys-list {
@@ -802,34 +932,40 @@ body {
   max-width: 300px;
 }
 
-/* ===== Toast Notifications - Enhanced Design ===== */
+/* ===== Toast Notifications - Glassmorphism Design ===== */
 .toast {
   position: fixed;
   top: var(--space-lg);
   left: 50%;
-  transform: translateX(-50%) translateY(-100px);
-  background: var(--bg-card);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-lg);
-  padding: var(--space-md) var(--space-lg);
+  transform: translateX(-50%) translateY(-100px) scale(0.9);
+  background: rgba(15, 20, 30, 0.75);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-xl);
+  padding: var(--space-md) var(--space-xl);
   display: flex;
   align-items: center;
   gap: var(--space-md);
   box-shadow:
-    var(--shadow-xl),
-    0 0 0 1px rgba(0, 0, 0, 0.05),
-    0 10px 40px rgba(0, 0, 0, 0.15);
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   z-index: var(--z-notification);
   opacity: 0;
-  transition: all var(--transition-base);
-  max-width: 400px;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  max-width: 360px;
+  min-width: 200px;
   pointer-events: none;
-  backdrop-filter: blur(12px);
-  background: rgba(20, 25, 34, 0.95);
 }
 
 [data-theme='light'] .toast {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
 .toast[hidden] {
@@ -838,22 +974,31 @@ body {
 
 .toast.show {
   opacity: 1;
-  transform: translateX(-50%) translateY(0);
+  transform: translateX(-50%) translateY(0) scale(1);
   pointer-events: all;
 }
 
 .toast-icon {
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
   flex-shrink: 0;
-  width: 20px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
 }
 
 .toast-message {
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
-  color: var(--text-primary);
+  color: rgba(255, 255, 255, 0.95);
   line-height: var(--line-normal);
+  letter-spacing: 0.01em;
+}
+
+[data-theme='light'] .toast-message {
+  color: var(--text-primary);
 }
 
 /* ===== Processing Overlay - Sleek Professional Design ===== */

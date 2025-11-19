@@ -32,8 +32,9 @@ const el = {
   panelApiKeys: document.getElementById('panel-apiKeys')!,
   panelStats: document.getElementById('panel-stats')!,
 
-  // Settings
-  translateModel: document.getElementById('translateModel') as HTMLSelectElement,
+  // Settings - Custom Dropdown
+  modelDropdown: document.getElementById('modelDropdown')!,
+  translateModel: document.getElementById('translateModel') as HTMLButtonElement,
   includeFreeText: document.getElementById('includeFreeText') as HTMLInputElement,
   textStroke: document.getElementById('textStroke') as HTMLInputElement,
   blurFreeTextBg: document.getElementById('blurFreeTextBg') as HTMLInputElement,
@@ -56,6 +57,9 @@ const el = {
   processingDetail: document.getElementById('processingDetail')!,
   progressFill: document.getElementById('progressFill')!,
 };
+
+// Current dropdown value
+let currentTranslateModel = 'gemini-flash-latest';
 
 // ===== Initialization =====
 document.addEventListener('DOMContentLoaded', async () => {
@@ -87,7 +91,9 @@ async function loadAndApplySettings(): Promise<void> {
       el.serverUrl.value = serverUrl;
     }
 
-    el.translateModel.value = settings.translateModel;
+    // Set custom dropdown value
+    currentTranslateModel = settings.translateModel;
+    setDropdownValue(settings.translateModel);
     el.includeFreeText.checked = settings.includeFreeText;
     el.textStroke.checked = settings.textStroke;
     el.blurFreeTextBg.checked = settings.blurFreeTextBg;
@@ -119,7 +125,7 @@ async function saveCurrentSettings(): Promise<void> {
     const settings: Partial<ExtensionSettings> = {
       serverUrl: el.serverUrl.value,
       apiKeys,
-      translateModel: el.translateModel.value,
+      translateModel: currentTranslateModel,
       includeFreeText: el.includeFreeText.checked,
       textStroke: el.textStroke.checked,
       blurFreeTextBg: el.blurFreeTextBg.checked,
@@ -448,13 +454,15 @@ function setupEventListeners(): void {
   });
 
   // Settings
-  el.translateModel.addEventListener('change', saveCurrentSettings);
   el.includeFreeText.addEventListener('change', saveCurrentSettings);
   el.textStroke.addEventListener('change', saveCurrentSettings);
   el.blurFreeTextBg.addEventListener('change', saveCurrentSettings);
   el.bananaMode.addEventListener('change', saveCurrentSettings);
   el.cache.addEventListener('change', saveCurrentSettings);
   el.metricsDetail.addEventListener('change', saveCurrentSettings);
+
+  // Custom Dropdown
+  setupCustomDropdown();
 
   // Tabs
   el.tabSettings.addEventListener('click', () => switchTab('settings'));
@@ -527,5 +535,104 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   sendResponse({ status: 'ok' });
   return false;
 });
+
+// ===== Custom Dropdown =====
+function setupCustomDropdown(): void {
+  const trigger = el.translateModel;
+  const dropdown = el.modelDropdown;
+  const items = dropdown.querySelectorAll<HTMLLIElement>('.dropdown-item');
+
+  // Toggle dropdown on trigger click
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = dropdown.classList.contains('open');
+
+    if (isOpen) {
+      closeDropdown();
+    } else {
+      openDropdown();
+    }
+  });
+
+  // Handle item selection
+  items.forEach((item) => {
+    item.addEventListener('click', () => {
+      const value = item.dataset.value;
+      if (value) {
+        selectDropdownItem(value);
+        closeDropdown();
+        saveCurrentSettings();
+      }
+    });
+  });
+
+  // Close on outside click
+  document.addEventListener('click', (e) => {
+    if (!dropdown.contains(e.target as Node)) {
+      closeDropdown();
+    }
+  });
+
+  // Keyboard navigation
+  trigger.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (dropdown.classList.contains('open')) {
+        closeDropdown();
+      } else {
+        openDropdown();
+      }
+    } else if (e.key === 'Escape') {
+      closeDropdown();
+    } else if (e.key === 'ArrowDown' && dropdown.classList.contains('open')) {
+      e.preventDefault();
+      const currentIndex = getCurrentItemIndex();
+      const nextIndex = Math.min(currentIndex + 1, items.length - 1);
+      selectDropdownItem(items[nextIndex].dataset.value!);
+    } else if (e.key === 'ArrowUp' && dropdown.classList.contains('open')) {
+      e.preventDefault();
+      const currentIndex = getCurrentItemIndex();
+      const prevIndex = Math.max(currentIndex - 1, 0);
+      selectDropdownItem(items[prevIndex].dataset.value!);
+    }
+  });
+
+  function getCurrentItemIndex(): number {
+    const itemsArray = Array.from(items);
+    return itemsArray.findIndex(item => item.classList.contains('selected'));
+  }
+}
+
+function openDropdown(): void {
+  el.modelDropdown.classList.add('open');
+  el.translateModel.setAttribute('aria-expanded', 'true');
+}
+
+function closeDropdown(): void {
+  el.modelDropdown.classList.remove('open');
+  el.translateModel.setAttribute('aria-expanded', 'false');
+}
+
+function selectDropdownItem(value: string): void {
+  const dropdown = el.modelDropdown;
+  const items = dropdown.querySelectorAll<HTMLLIElement>('.dropdown-item');
+  const selectedText = dropdown.querySelector('.dropdown-selected')!;
+
+  items.forEach((item) => {
+    const isSelected = item.dataset.value === value;
+    item.classList.toggle('selected', isSelected);
+    item.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+
+    if (isSelected) {
+      const text = item.querySelector('.dropdown-item-text')?.textContent || '';
+      selectedText.textContent = text;
+      currentTranslateModel = value;
+    }
+  });
+}
+
+function setDropdownValue(value: string): void {
+  selectDropdownItem(value);
+}
 
 console.log('[Popup] Script loaded');

@@ -38,8 +38,8 @@
   "commands": {
     "process-page-images": {
       "suggested_key": {
-        "default": "Ctrl+Shift+M",
-        "mac": "Command+Shift+M"
+        "default": "Alt+Q",
+        "mac": "MacCtrl+Q"
       },
       "description": "Process all manga images on current page"
     }
