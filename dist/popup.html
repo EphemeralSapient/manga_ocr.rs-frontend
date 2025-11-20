@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Manga Text Processor</title>
-  <script type="module" crossorigin src="./assets/popup-D29ZS5vl.js"></script>
-  <link rel="stylesheet" crossorigin href="./styles/popup-CB8__deN.css">
+  <script type="module" crossorigin src="./assets/popup-CC3tU-Y7.js"></script>
+  <link rel="stylesheet" crossorigin href="./styles/popup-DL-ahZef.css">
 </head>
 <body data-theme="dark">
   <div class="app" role="application" aria-label="Manga Text Processor">
@@ -45,11 +45,20 @@
         <h2 id="shortcut-heading" class="sr-only">Process Images</h2>
         <div class="shortcut-banner">
           <div class="shortcut-content">
-            <span class="shortcut-text">Press</span>
-            <kbd class="shortcut-key">Alt</kbd>
-            <span class="shortcut-plus">+</span>
-            <kbd class="shortcut-key">Q</kbd>
-            <span class="shortcut-text">to process</span>
+            <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
+              <div style="display: flex; align-items: center; justify-content: center; gap: var(--space-sm); flex-wrap: wrap;">
+                <kbd class="shortcut-key">Alt</kbd>
+                <span class="shortcut-plus">+</span>
+                <kbd class="shortcut-key">Q</kbd>
+                <span class="shortcut-text" style="margin-left: 4px;">Process all images</span>
+              </div>
+              <div style="display: flex; align-items: center; justify-content: center; gap: var(--space-sm); flex-wrap: wrap;">
+                <kbd class="shortcut-key">Alt</kbd>
+                <span class="shortcut-plus">+</span>
+                <kbd class="shortcut-key">W</kbd>
+                <span class="shortcut-text" style="margin-left: 4px;">Select single image</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -87,8 +96,7 @@
           role="tab"
           aria-selected="false"
           aria-controls="panel-stats"
-          tabindex="-1"
-          disabled>
+          tabindex="-1">
           <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M3 3v18h18M18 17V9m-5 8V5m-5 12v-3"/>
           </svg>
@@ -168,130 +176,218 @@
             </div>
           </div>
 
-          <div class="settings-group">
-            <h3 class="settings-group-title">Rendering Options</h3>
+          <div class="settings-group accordion-group">
+            <button type="button" class="accordion-header" aria-expanded="true" aria-controls="accordion-rendering">
+              <h3 class="settings-group-title">Rendering Options</h3>
+              <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            <div id="accordion-rendering" class="accordion-content">
+              <div class="field field-row">
+                <label for="textStroke" class="field-label">
+                  Text Stroke
+                  <span class="field-help">Add outline to translated text</span>
+                </label>
+                <label class="toggle" aria-label="Toggle text stroke">
+                  <input type="checkbox" id="textStroke">
+                  <span class="toggle-slider" aria-hidden="true"></span>
+                </label>
+              </div>
 
-            <div class="field field-row">
-              <label for="textStroke" class="field-label">
-                Text Stroke
-                <span class="field-help">Add outline to translated text</span>
-              </label>
-              <label class="toggle" aria-label="Toggle text stroke">
-                <input type="checkbox" id="textStroke">
-                <span class="toggle-slider" aria-hidden="true"></span>
-              </label>
-            </div>
-
-            <div class="field field-row">
-              <label for="blurFreeTextBg" class="field-label">
-                Blur Free Text Background
-                <span class="field-help">Apply blur effect behind free text</span>
-              </label>
-              <label class="toggle" aria-label="Toggle blur free text background">
-                <input type="checkbox" id="blurFreeTextBg">
-                <span class="toggle-slider" aria-hidden="true"></span>
-              </label>
-            </div>
-          </div>
-
-          <div class="settings-group">
-            <h3 class="settings-group-title">Advanced Options</h3>
-
-            <div class="field field-row">
-              <label for="bananaMode" class="field-label">
-                Banana Mode
-                <span class="field-help">Enhanced detection for complex layouts</span>
-              </label>
-              <label class="toggle" aria-label="Toggle banana mode">
-                <input type="checkbox" id="bananaMode">
-                <span class="toggle-slider" aria-hidden="true"></span>
-              </label>
-            </div>
-
-            <div class="field field-row">
-              <label for="cache" class="field-label">
-                Enable Cache
-                <span class="field-help">Cache translations for faster reprocessing</span>
-              </label>
-              <label class="toggle" aria-label="Toggle cache">
-                <input type="checkbox" id="cache" checked>
-                <span class="toggle-slider" aria-hidden="true"></span>
-              </label>
-            </div>
-
-            <div class="field field-row">
-              <label for="metricsDetail" class="field-label">
-                Detailed Metrics
-                <span class="field-help">Show comprehensive processing statistics</span>
-              </label>
-              <label class="toggle" aria-label="Toggle detailed metrics">
-                <input type="checkbox" id="metricsDetail" checked>
-                <span class="toggle-slider" aria-hidden="true"></span>
-              </label>
+              <div class="field field-row">
+                <label for="blurFreeTextBg" class="field-label">
+                  Blur Free Text Background
+                  <span class="field-help">Apply blur effect behind free text</span>
+                </label>
+                <label class="toggle" aria-label="Toggle blur free text background">
+                  <input type="checkbox" id="blurFreeTextBg">
+                  <span class="toggle-slider" aria-hidden="true"></span>
+                </label>
+              </div>
             </div>
           </div>
 
-          <div class="settings-group">
-            <h3 class="settings-group-title">Server Options</h3>
+          <div class="settings-group accordion-group">
+            <button type="button" class="accordion-header" aria-expanded="true" aria-controls="accordion-advanced">
+              <h3 class="settings-group-title">Advanced Options</h3>
+              <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            <div id="accordion-advanced" class="accordion-content">
+              <div class="field field-row">
+                <label for="bananaMode" class="field-label">
+                  Banana Mode
+                  <span class="field-help">Enhanced detection for complex layouts</span>
+                </label>
+                <label class="toggle" aria-label="Toggle banana mode">
+                  <input type="checkbox" id="bananaMode">
+                  <span class="toggle-slider" aria-hidden="true"></span>
+                </label>
+              </div>
 
-            <div class="field field-row">
-              <label for="useMask" class="field-label">
-                Use Mask Segmentation
-                <span class="field-help">Precise text removal using segmentation mask</span>
-              </label>
-              <label class="toggle" aria-label="Toggle mask segmentation">
-                <input type="checkbox" id="useMask" checked>
-                <span class="toggle-slider" aria-hidden="true"></span>
-              </label>
+              <div class="field field-row">
+                <label for="cache" class="field-label">
+                  Enable Cache
+                  <span class="field-help">Cache translations for faster reprocessing</span>
+                </label>
+                <label class="toggle" aria-label="Toggle cache">
+                  <input type="checkbox" id="cache" checked>
+                  <span class="toggle-slider" aria-hidden="true"></span>
+                </label>
+              </div>
+
+              <div class="field field-row">
+                <label for="metricsDetail" class="field-label">
+                  Detailed Metrics
+                  <span class="field-help">Show comprehensive processing statistics</span>
+                </label>
+                <label class="toggle" aria-label="Toggle detailed metrics">
+                  <input type="checkbox" id="metricsDetail" checked>
+                  <span class="toggle-slider" aria-hidden="true"></span>
+                </label>
+              </div>
+
+              <div class="field field-row">
+                <label for="geminiThinking" class="field-label">
+                  Gemini Thinking Mode
+                  <span class="field-help">Enable deep thinking for better quality (slower, more tokens)</span>
+                </label>
+                <label class="toggle" aria-label="Toggle Gemini thinking">
+                  <input type="checkbox" id="geminiThinking">
+                  <span class="toggle-slider" aria-hidden="true"></span>
+                </label>
+              </div>
+
+              <div class="field field-row">
+                <label for="tighterBounds" class="field-label">
+                  Tighter Bounds
+                  <span class="field-help">Use more precise text region boundaries</span>
+                </label>
+                <label class="toggle" aria-label="Toggle tighter bounds">
+                  <input type="checkbox" id="tighterBounds">
+                  <span class="toggle-slider" aria-hidden="true"></span>
+                </label>
+              </div>
             </div>
+          </div>
 
-            <div class="field field-row">
-              <label for="mergeImg" class="field-label">
-                Batch Inference Mode
-                <span class="field-help">Merge images for faster GPU processing</span>
-              </label>
-              <label class="toggle" aria-label="Toggle batch inference">
-                <input type="checkbox" id="mergeImg">
-                <span class="toggle-slider" aria-hidden="true"></span>
-              </label>
-            </div>
+          <div class="settings-group accordion-group">
+            <button type="button" class="accordion-header" aria-expanded="true" aria-controls="accordion-server">
+              <h3 class="settings-group-title">Server Options</h3>
+              <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            <div id="accordion-server" class="accordion-content">
+              <!-- Backend Info -->
+              <div id="backendInfo" class="backend-info" style="display: none; margin-bottom: var(--space-md); padding: var(--space-sm); background: var(--bg-secondary); border-radius: var(--radius-md); font-size: var(--text-sm);">
+                <strong>Backend:</strong> <span id="backendType">Unknown</span>
+                <span id="backendAcceleration" style="color: var(--text-secondary);"></span>
+              </div>
 
-            <div class="field field-row">
-              <label for="batchSize" class="field-label">
-                Batch Size
-                <span class="field-help">Number of pages per batch (1-50)</span>
-              </label>
-              <input
-                type="number"
-                id="batchSize"
-                class="number-input"
-                min="1"
-                max="50"
-                value="5"
-                aria-describedby="batch-size-help"
-              >
-              <span id="batch-size-help" class="sr-only">
-                Higher values process more images at once but use more memory
-              </span>
-            </div>
+              <div class="field field-row">
+                <label for="useMask" class="field-label">
+                  Use Mask Segmentation
+                  <span class="field-help">Precise text removal using segmentation mask</span>
+                </label>
+                <label class="toggle" aria-label="Toggle mask segmentation">
+                  <input type="checkbox" id="useMask" checked>
+                  <span class="toggle-slider" aria-hidden="true"></span>
+                </label>
+              </div>
 
-            <div class="field field-row">
-              <label for="sessionLimit" class="field-label">
-                ONNX Session Limit
-                <span class="field-help">Max sessions per model (1-32, ~82MB each)</span>
-              </label>
-              <input
-                type="number"
-                id="sessionLimit"
-                class="number-input"
-                min="1"
-                max="32"
-                value="8"
-                aria-describedby="session-limit-help"
-              >
-              <span id="session-limit-help" class="sr-only">
-                Controls memory usage. Sessions allocated dynamically on demand.
-              </span>
+              <div class="field field-row" id="mergeImgField">
+                <label for="mergeImg" class="field-label">
+                  Batch Inference Mode
+                  <span class="field-help">Merge images for faster GPU processing</span>
+                </label>
+                <label class="toggle" aria-label="Toggle batch inference">
+                  <input type="checkbox" id="mergeImg">
+                  <span class="toggle-slider" aria-hidden="true"></span>
+                </label>
+              </div>
+
+              <div class="field field-row" id="batchSizeField">
+                <label for="batchSize" class="field-label">
+                  Batch Size
+                  <span class="field-help">Number of pages per batch (1-50)</span>
+                </label>
+                <div class="number-input-wrapper">
+                  <button
+                    type="button"
+                    class="number-stepper-btn decrement"
+                    data-target="batchSize"
+                    aria-label="Decrease batch size">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                      <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                  </button>
+                  <input
+                    type="number"
+                    id="batchSize"
+                    class="number-input"
+                    min="1"
+                    max="50"
+                    value="5"
+                    aria-describedby="batch-size-help"
+                  >
+                  <button
+                    type="button"
+                    class="number-stepper-btn increment"
+                    data-target="batchSize"
+                    aria-label="Increase batch size">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                      <line x1="12" y1="5" x2="12" y2="19"/>
+                      <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                  </button>
+                </div>
+                <span id="batch-size-help" class="sr-only">
+                  Higher values process more images at once but use more memory
+                </span>
+              </div>
+
+              <div class="field field-row" id="sessionLimitField">
+                <label for="sessionLimit" class="field-label">
+                  ONNX Session Limit
+                  <span class="field-help">Max sessions per model (1-32, ~82MB each)</span>
+                </label>
+                <div class="number-input-wrapper">
+                  <button
+                    type="button"
+                    class="number-stepper-btn decrement"
+                    data-target="sessionLimit"
+                    aria-label="Decrease session limit">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                      <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                  </button>
+                  <input
+                    type="number"
+                    id="sessionLimit"
+                    class="number-input"
+                    min="1"
+                    max="32"
+                    value="8"
+                    aria-describedby="session-limit-help"
+                  >
+                  <button
+                    type="button"
+                    class="number-stepper-btn increment"
+                    data-target="sessionLimit"
+                    aria-label="Increase session limit">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                      <line x1="12" y1="5" x2="12" y2="19"/>
+                      <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                  </button>
+                </div>
+                <span id="session-limit-help" class="sr-only">
+                  Controls memory usage. Sessions allocated dynamically on demand.
+                </span>
+              </div>
             </div>
           </div>
         </div>

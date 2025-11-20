@@ -47,9 +47,16 @@
     "process-page-images": {
       "suggested_key": {
         "default": "Alt+Q",
-        "mac": "MacCtrl+Q"
+        "mac": "Alt+Q"
       },
       "description": "Process all manga images on current page"
+    },
+    "select-single-image": {
+      "suggested_key": {
+        "default": "Alt+W",
+        "mac": "Alt+W"
+      },
+      "description": "Click to select and process a single image"
     }
   }
 }

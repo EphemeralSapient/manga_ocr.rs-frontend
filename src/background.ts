@@ -13,7 +13,7 @@ console.log('[BACKGROUND] Manga Text Processor: Service worker initializing...')
 chrome.commands.onCommand.addListener(async (command) => {
   console.log(`[BACKGROUND] Command received: ${command}`);
 
-  if (command === 'process-page-images') {
+  if (command === 'process-page-images' || command === 'select-single-image') {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
@@ -33,6 +33,8 @@ chrome.commands.onCommand.addListener(async (command) => {
         'blurFreeTextBg',
         'cache',
         'metricsDetail',
+        'geminiThinking',
+        'tighterBounds',
         'useMask',
         'mergeImg',
         'batchSize',
@@ -49,15 +51,18 @@ chrome.commands.onCommand.addListener(async (command) => {
         blurFreeTextBg: settings.blurFreeTextBg || false,
         cache: settings.cache !== undefined ? settings.cache : true,
         metricsDetail: settings.metricsDetail !== undefined ? settings.metricsDetail : true,
+        geminiThinking: settings.geminiThinking || false,
+        tighterBounds: settings.tighterBounds !== undefined ? settings.tighterBounds : true,
         useMask: settings.useMask !== undefined ? settings.useMask : true,
         mergeImg: settings.mergeImg || false,
         batchSize: settings.batchSize || 5,
         sessionLimit: settings.sessionLimit || 8,
       };
 
-      // Send message to content script
+      // Send appropriate message to content script
+      const action = command === 'select-single-image' ? 'enter-selection-mode' : 'process-images';
       const response = await chrome.tabs.sendMessage(tab.id, {
-        action: 'process-images',
+        action,
         config,
       });
 

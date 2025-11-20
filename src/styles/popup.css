@@ -459,6 +459,81 @@ body {
   margin-bottom: var(--space-xs);
 }
 
+/* ===== Accordion Groups ===== */
+.accordion-group {
+  padding: 0;
+  overflow: hidden;
+}
+
+.accordion-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-lg);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  position: relative;
+}
+
+.accordion-header:hover {
+  background: var(--bg-hover);
+}
+
+.accordion-header:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.accordion-header .settings-group-title {
+  margin-bottom: 0;
+  flex: 1;
+  text-align: left;
+}
+
+.accordion-chevron {
+  width: 18px;
+  height: 18px;
+  color: var(--text-secondary);
+  transition: transform var(--transition-base), color var(--transition-base);
+  flex-shrink: 0;
+  margin-left: var(--space-md);
+}
+
+.accordion-header:hover .accordion-chevron {
+  color: var(--text-primary);
+}
+
+.accordion-header[aria-expanded="true"] .accordion-chevron {
+  transform: rotate(180deg);
+  color: var(--primary);
+}
+
+.accordion-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: 0 var(--space-lg) var(--space-lg) var(--space-lg);
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    max-height var(--transition-base) ease-out,
+    opacity var(--transition-base) ease-out,
+    padding var(--transition-base) ease-out;
+}
+
+.accordion-content:not([hidden]) {
+  max-height: 2000px;
+  opacity: 1;
+  transition:
+    max-height var(--transition-base) ease-in,
+    opacity var(--transition-base) ease-in,
+    padding var(--transition-base) ease-in;
+}
+
 /* Fields */
 .field {
   display: flex;
@@ -702,33 +777,136 @@ body {
   border-color: var(--border-strong);
 }
 
-/* ===== Number Input ===== */
-.number-input {
-  width: 70px;
-  padding: var(--space-sm) var(--space-md);
-  background: var(--bg-surface);
+/* ===== Number Input Stepper - Enhanced Professional Design ===== */
+.number-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  background: linear-gradient(
+    135deg,
+    var(--bg-input) 0%,
+    var(--bg-elevated) 100%
+  );
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
+  padding: 2px;
+  transition: all var(--transition-base);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.number-input-wrapper:hover {
+  border-color: var(--border-strong);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.number-input-wrapper:focus-within {
+  border-color: var(--primary);
+  box-shadow:
+    var(--shadow-focus),
+    0 2px 8px rgba(59, 130, 246, 0.15);
+}
+
+.number-input {
+  flex: 1;
+  min-width: 48px;
+  padding: var(--space-sm) var(--space-md);
+  background: transparent;
+  border: none;
   color: var(--text-primary);
   font-size: var(--text-sm);
-  font-family: inherit;
+  font-weight: var(--font-semibold);
+  font-family: var(--font-mono);
   text-align: center;
   transition: all var(--transition-base);
-}
-
-.number-input:hover {
-  border-color: var(--border-strong);
-}
-
-.number-input:focus {
-  border-color: var(--primary);
   outline: none;
-  box-shadow: var(--shadow-focus);
 }
 
+.number-input::placeholder {
+  color: var(--text-placeholder);
+  font-weight: var(--font-normal);
+}
+
+/* Hide default browser spinners */
 .number-input::-webkit-inner-spin-button,
 .number-input::-webkit-outer-spin-button {
-  opacity: 1;
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.number-input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+/* Stepper Buttons */
+.number-stepper-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+  user-select: none;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.number-stepper-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+  transform: scale(1.05);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.number-stepper-btn:active:not(:disabled) {
+  transform: scale(0.95);
+  background: var(--bg-active);
+}
+
+.number-stepper-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: var(--bg-input);
+  border-color: var(--border-subtle);
+}
+
+.number-stepper-btn svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.5;
+}
+
+/* Focus visible for keyboard navigation */
+.number-stepper-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Decrement button specific styles */
+.number-stepper-btn.decrement:hover:not(:disabled) {
+  color: var(--error);
+  border-color: var(--error);
+  background: var(--error-light);
+}
+
+/* Increment button specific styles */
+.number-stepper-btn.increment:hover:not(:disabled) {
+  color: var(--success);
+  border-color: var(--success);
+  background: var(--success-light);
 }
 
 /* ===== API Keys ===== */

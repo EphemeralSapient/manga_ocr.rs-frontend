@@ -10,6 +10,8 @@ export interface ExtensionSettings {
   blurFreeTextBg: boolean;
   cache: boolean;
   metricsDetail: boolean;
+  geminiThinking: boolean;
+  tighterBounds: boolean;
   useMask: boolean;
   mergeImg: boolean;
   batchSize: number;
@@ -27,6 +29,8 @@ export interface ProcessConfig {
   blurFreeTextBg: boolean;
   cache: boolean;
   metricsDetail: boolean;
+  geminiThinking: boolean;
+  tighterBounds: boolean;
   useMask: boolean;
   mergeImg: boolean;
   batchSize: number;

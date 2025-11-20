@@ -14,6 +14,8 @@ const DEFAULT_SETTINGS: ExtensionSettings = {
   blurFreeTextBg: false,
   cache: true,
   metricsDetail: true,
+  geminiThinking: false,
+  tighterBounds: false,
   useMask: true,
   mergeImg: false,
   batchSize: 5,
@@ -108,4 +110,111 @@ export function onSettingsChanged(
       }
     }
   });
+}
+
+/**
+ * Cumulative Statistics Storage
+ */
+export interface CumulativeStats {
+  totalSessions: number;
+  totalImages: number;
+  totalRegions: number;
+  totalSimpleBg: number;
+  totalComplexBg: number;
+  totalApiCalls: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCacheHits: number;
+  totalCacheMisses: number;
+  totalProcessingTimeMs: number;
+  lastProcessedAt?: number;
+  firstProcessedAt?: number;
+}
+
+const STATS_KEY = 'cumulativeStats';
+
+export async function loadCumulativeStats(): Promise<CumulativeStats> {
+  try {
+    const result = await chrome.storage.local.get(STATS_KEY);
+    return result[STATS_KEY] || {
+      totalSessions: 0,
+      totalImages: 0,
+      totalRegions: 0,
+      totalSimpleBg: 0,
+      totalComplexBg: 0,
+      totalApiCalls: 0,
+      totalInputTokens: 0,
+      totalOutputTokens: 0,
+      totalCacheHits: 0,
+      totalCacheMisses: 0,
+      totalProcessingTimeMs: 0,
+    };
+  } catch (error) {
+    console.error('[Storage] Failed to load cumulative stats:', error);
+    return {
+      totalSessions: 0,
+      totalImages: 0,
+      totalRegions: 0,
+      totalSimpleBg: 0,
+      totalComplexBg: 0,
+      totalApiCalls: 0,
+      totalInputTokens: 0,
+      totalOutputTokens: 0,
+      totalCacheHits: 0,
+      totalCacheMisses: 0,
+      totalProcessingTimeMs: 0,
+    };
+  }
+}
+
+export async function addSessionStats(sessionAnalytics: {
+  total_images?: number;
+  total_regions?: number;
+  simple_bg_count?: number;
+  complex_bg_count?: number;
+  api_calls_simple?: number;
+  api_calls_complex?: number;
+  api_calls_banana?: number;
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_hits?: number;
+  cache_misses?: number;
+  total_time_ms?: number;
+}): Promise<void> {
+  try {
+    const current = await loadCumulativeStats();
+
+    const updated: CumulativeStats = {
+      totalSessions: current.totalSessions + 1,
+      totalImages: current.totalImages + (sessionAnalytics.total_images || 0),
+      totalRegions: current.totalRegions + (sessionAnalytics.total_regions || 0),
+      totalSimpleBg: current.totalSimpleBg + (sessionAnalytics.simple_bg_count || 0),
+      totalComplexBg: current.totalComplexBg + (sessionAnalytics.complex_bg_count || 0),
+      totalApiCalls: current.totalApiCalls +
+        (sessionAnalytics.api_calls_simple || 0) +
+        (sessionAnalytics.api_calls_complex || 0) +
+        (sessionAnalytics.api_calls_banana || 0),
+      totalInputTokens: current.totalInputTokens + (sessionAnalytics.input_tokens || 0),
+      totalOutputTokens: current.totalOutputTokens + (sessionAnalytics.output_tokens || 0),
+      totalCacheHits: current.totalCacheHits + (sessionAnalytics.cache_hits || 0),
+      totalCacheMisses: current.totalCacheMisses + (sessionAnalytics.cache_misses || 0),
+      totalProcessingTimeMs: current.totalProcessingTimeMs + (sessionAnalytics.total_time_ms || 0),
+      lastProcessedAt: Date.now(),
+      firstProcessedAt: current.firstProcessedAt || Date.now(),
+    };
+
+    await chrome.storage.local.set({ [STATS_KEY]: updated });
+    console.log('[Storage] Cumulative stats updated:', updated);
+  } catch (error) {
+    console.error('[Storage] Failed to save cumulative stats:', error);
+  }
+}
+
+export async function resetCumulativeStats(): Promise<void> {
+  try {
+    await chrome.storage.local.remove(STATS_KEY);
+    console.log('[Storage] Cumulative stats reset');
+  } catch (error) {
+    console.error('[Storage] Failed to reset cumulative stats:', error);
+  }
 }

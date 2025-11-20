@@ -4,7 +4,7 @@
  */
 
 import type { ExtensionSettings, Analytics, ConnectionStatus, Tab } from './types';
-import { loadSettings, saveSettings } from './utils/storage';
+import { loadSettings, saveSettings, loadCumulativeStats, resetCumulativeStats, type CumulativeStats } from './utils/storage';
 import { createFocusTrap } from './utils/focus-trap';
 import { KeyboardManager } from './utils/keyboard';
 
@@ -13,6 +13,7 @@ console.log('[Popup] Initializing...');
 // ===== State =====
 let serverUrl = 'http://localhost:1420';
 let currentAnalytics: Analytics | null = null;
+let cumulativeStats: CumulativeStats | null = null;
 let checkTimeout: ReturnType<typeof setTimeout> | null = null;
 
 // ===== DOM Elements =====
@@ -41,10 +42,20 @@ const el = {
   bananaMode: document.getElementById('bananaMode') as HTMLInputElement,
   cache: document.getElementById('cache') as HTMLInputElement,
   metricsDetail: document.getElementById('metricsDetail') as HTMLInputElement,
+  geminiThinking: document.getElementById('geminiThinking') as HTMLInputElement,
+  tighterBounds: document.getElementById('tighterBounds') as HTMLInputElement,
   useMask: document.getElementById('useMask') as HTMLInputElement,
   mergeImg: document.getElementById('mergeImg') as HTMLInputElement,
   batchSize: document.getElementById('batchSize') as HTMLInputElement,
   sessionLimit: document.getElementById('sessionLimit') as HTMLInputElement,
+
+  // Backend Info
+  backendInfo: document.getElementById('backendInfo')!,
+  backendType: document.getElementById('backendType')!,
+  backendAcceleration: document.getElementById('backendAcceleration')!,
+  mergeImgField: document.getElementById('mergeImgField')!,
+  batchSizeField: document.getElementById('batchSizeField')!,
+  sessionLimitField: document.getElementById('sessionLimitField')!,
 
   // API Keys
   apiKeysList: document.getElementById('apiKeysList')!,
@@ -75,11 +86,18 @@ async function initialize(): Promise<void> {
   // Load settings
   await loadAndApplySettings();
 
+  // Load cumulative statistics
+  cumulativeStats = await loadCumulativeStats();
+  updateStatisticsPanel();
+
   // Setup event listeners
   setupEventListeners();
 
   // Setup keyboard shortcuts
   setupKeyboardShortcuts();
+
+  // Setup accordion
+  setupAccordion();
 
   // Check server connection
   checkConnection();
@@ -104,6 +122,8 @@ async function loadAndApplySettings(): Promise<void> {
     el.bananaMode.checked = settings.bananaMode;
     el.cache.checked = settings.cache;
     el.metricsDetail.checked = settings.metricsDetail;
+    el.geminiThinking.checked = settings.geminiThinking ?? false;
+    el.tighterBounds.checked = settings.tighterBounds ?? true;
     el.useMask.checked = settings.useMask ?? true;
     el.mergeImg.checked = settings.mergeImg ?? false;
     el.batchSize.value = String(settings.batchSize ?? 5);
@@ -140,6 +160,8 @@ async function saveCurrentSettings(): Promise<void> {
       bananaMode: el.bananaMode.checked,
       cache: el.cache.checked,
       metricsDetail: el.metricsDetail.checked,
+      geminiThinking: el.geminiThinking.checked,
+      tighterBounds: el.tighterBounds.checked,
       useMask: el.useMask.checked,
       mergeImg: el.mergeImg.checked,
       batchSize: Math.max(1, Math.min(50, parseInt(el.batchSize.value) || 5)),
@@ -156,9 +178,13 @@ async function saveCurrentSettings(): Promise<void> {
 }
 
 // ===== Server Toggle Sync =====
-async function syncServerToggle(toggle: 'mask' | 'mergeimg', showNotification = true): Promise<void> {
-  const endpoint = toggle === 'mask' ? '/mask-toggle' : '/mergeimg-toggle';
-  const toggleName = toggle === 'mask' ? 'Mask mode' : 'Batch inference';
+async function syncServerToggle(toggle: 'mask' | 'mergeimg' | 'thinking', showNotification = true): Promise<void> {
+  const endpoint = toggle === 'mask' ? '/mask-toggle' :
+                   toggle === 'mergeimg' ? '/mergeimg-toggle' :
+                   '/thinking-toggle';
+  const toggleName = toggle === 'mask' ? 'Mask mode' :
+                     toggle === 'mergeimg' ? 'Batch inference' :
+                     'Gemini thinking';
 
   try {
     const response = await fetch(`${serverUrl}${endpoint}`, {
@@ -167,7 +193,9 @@ async function syncServerToggle(toggle: 'mask' | 'mergeimg', showNotification = 
 
     if (response.ok) {
       const data = await response.json();
-      const enabled = toggle === 'mask' ? data.mask_enabled : data.merge_img_enabled;
+      const enabled = toggle === 'mask' ? data.mask_enabled :
+                      toggle === 'mergeimg' ? data.merge_img_enabled :
+                      data.gemini_thinking_enabled;
       console.log(`[Popup] ${toggleName} synced: ${enabled}`);
       if (showNotification) {
         showToast('✓', `${toggleName} ${enabled ? 'enabled' : 'disabled'}`);
@@ -197,11 +225,17 @@ async function checkAndSyncServerSettings(): Promise<void> {
       return; // No config in response
     }
 
+    // Display backend information
+    if (data.backend) {
+      displayBackendInfo(data.backend);
+    }
+
     // Compare server state with local settings
     const needsSyncMask = data.config.mask_enabled !== el.useMask.checked;
     const needsSyncMergeImg = data.config.merge_img_enabled !== el.mergeImg.checked;
+    const needsSyncThinking = data.config.gemini_thinking_enabled !== el.geminiThinking.checked;
 
-    if (needsSyncMask || needsSyncMergeImg) {
+    if (needsSyncMask || needsSyncMergeImg || needsSyncThinking) {
       console.log('[Popup] Server state mismatch detected, syncing frontend settings to server');
 
       // Sync mismatched settings (silently)
@@ -215,12 +249,71 @@ async function checkAndSyncServerSettings(): Promise<void> {
         await syncServerToggle('mergeimg', false);
       }
 
+      if (needsSyncThinking) {
+        console.log(`  - Thinking: server=${data.config.gemini_thinking_enabled}, local=${el.geminiThinking.checked} → syncing`);
+        await syncServerToggle('thinking', false);
+      }
+
       console.log('[Popup] ✓ Frontend settings synced to server');
     } else {
       console.log('[Popup] ✓ Server state matches frontend, no sync needed');
     }
   } catch (error) {
     console.error('[Popup] Failed to check/sync server settings:', error);
+  }
+}
+
+// ===== Backend Display =====
+function displayBackendInfo(backend: string): void {
+  el.backendType.textContent = backend;
+  el.backendInfo.style.display = 'block';
+
+  // Determine acceleration type
+  const gpuBackends = ['DirectML', 'DirectML+CPU', 'CUDA', 'TensorRT', 'CoreML'];
+  const cpuBackends = ['XNNPACK', 'OpenVINO', 'OpenVINO-CPU'];
+
+  let accelerationText = '';
+  let isDirectML = false;
+
+  if (gpuBackends.some(b => backend.includes(b))) {
+    accelerationText = '(GPU Accelerated)';
+    isDirectML = backend.includes('DirectML');
+  } else if (cpuBackends.some(b => backend.includes(b))) {
+    accelerationText = '(CPU Accelerated)';
+  } else if (backend === 'CPU') {
+    accelerationText = '(Slow CPU Backend)';
+  }
+
+  el.backendAcceleration.textContent = accelerationText;
+
+  // Disable batch options for DirectML
+  if (isDirectML) {
+    console.log('[Popup] DirectML detected, disabling batch options');
+    el.mergeImg.checked = false;
+    el.mergeImg.disabled = true;
+    el.mergeImgField.style.opacity = '0.5';
+    el.mergeImgField.style.pointerEvents = 'none';
+
+    el.batchSizeField.style.opacity = '0.5';
+    el.batchSizeField.style.pointerEvents = 'none';
+    el.batchSize.disabled = true;
+
+    el.sessionLimitField.style.opacity = '0.5';
+    el.sessionLimitField.style.pointerEvents = 'none';
+    el.sessionLimit.disabled = true;
+  } else {
+    // Re-enable if not DirectML
+    el.mergeImg.disabled = false;
+    el.mergeImgField.style.opacity = '1';
+    el.mergeImgField.style.pointerEvents = 'auto';
+
+    el.batchSizeField.style.opacity = '1';
+    el.batchSizeField.style.pointerEvents = 'auto';
+    el.batchSize.disabled = false;
+
+    el.sessionLimitField.style.opacity = '1';
+    el.sessionLimitField.style.pointerEvents = 'auto';
+    el.sessionLimit.disabled = false;
   }
 }
 
@@ -403,7 +496,13 @@ function showProcessing(show: boolean, detail = 'Initializing...', progress = 0)
 
 // ===== Statistics =====
 function updateStatisticsPanel(): void {
-  if (!currentAnalytics) {
+  // Enable stats tab if we have either current session or cumulative data
+  if (currentAnalytics || (cumulativeStats && cumulativeStats.totalSessions > 0)) {
+    (el.tabStats as HTMLButtonElement).disabled = false;
+  }
+
+  // Show empty state if no data
+  if (!currentAnalytics && (!cumulativeStats || cumulativeStats.totalSessions === 0)) {
     el.statsContent.innerHTML = `
       <div class="empty-state">
         <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -418,9 +517,16 @@ function updateStatisticsPanel(): void {
     return;
   }
 
-  const html = `
-    <div class="settings-group">
-      <h3 class="settings-group-title">Image Processing</h3>
+  let html = '';
+
+  // Current Session Stats (if available)
+  if (currentAnalytics) {
+    html += `
+    <div class="settings-group" style="border-left: 3px solid var(--primary);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm);">
+        <h3 class="settings-group-title">Latest Session</h3>
+        <span style="font-size: var(--text-xs); color: var(--primary); font-weight: var(--font-semibold);">RECENT</span>
+      </div>
       <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-md);">
         <div class="stat-card">
           <div style="font-size: var(--text-xs); color: var(--text-secondary);">Images</div>
@@ -434,56 +540,91 @@ function updateStatisticsPanel(): void {
             ${currentAnalytics.total_regions || 0}
           </div>
         </div>
+      </div>
+      ${createStatRow('Processing Time', formatTime(currentAnalytics.total_time_ms), true)}
+      ${(currentAnalytics.input_tokens || currentAnalytics.output_tokens) ?
+        createStatRow('Tokens Used', ((currentAnalytics.input_tokens || 0) + (currentAnalytics.output_tokens || 0)).toLocaleString(), true) : ''}
+    </div>
+    `;
+  }
+
+  // Cumulative Stats (if available)
+  if (cumulativeStats && cumulativeStats.totalSessions > 0) {
+    const avgTimePerSession = cumulativeStats.totalProcessingTimeMs / cumulativeStats.totalSessions;
+    const avgImagesPerSession = cumulativeStats.totalImages / cumulativeStats.totalSessions;
+    const totalTokens = cumulativeStats.totalInputTokens + cumulativeStats.totalOutputTokens;
+    const cacheTotal = cumulativeStats.totalCacheHits + cumulativeStats.totalCacheMisses;
+    const hitRate = cacheTotal > 0 ? ((cumulativeStats.totalCacheHits / cacheTotal) * 100).toFixed(1) + '%' : 'N/A';
+
+    html += `
+    <div class="settings-group">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm);">
+        <h3 class="settings-group-title">Lifetime Statistics</h3>
+        <button id="resetStats" style="background: transparent; border: 1px solid var(--border-default); padding: 4px 8px; border-radius: var(--radius-sm); font-size: var(--text-xs); color: var(--text-secondary); cursor: pointer; transition: all var(--transition-base);">
+          Reset
+        </button>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-md); margin-bottom: var(--space-md);">
         <div class="stat-card">
-          <div style="font-size: var(--text-xs); color: var(--text-secondary);">Simple BG</div>
+          <div style="font-size: var(--text-xs); color: var(--text-secondary);">Total Sessions</div>
           <div style="font-size: var(--text-2xl); font-weight: var(--font-bold); color: var(--text-primary);">
-            ${currentAnalytics.simple_bg_count || 0}
+            ${cumulativeStats.totalSessions.toLocaleString()}
           </div>
         </div>
         <div class="stat-card">
-          <div style="font-size: var(--text-xs); color: var(--text-secondary);">Complex BG</div>
+          <div style="font-size: var(--text-xs); color: var(--text-secondary);">Total Images</div>
           <div style="font-size: var(--text-2xl); font-weight: var(--font-bold); color: var(--text-primary);">
-            ${currentAnalytics.complex_bg_count || 0}
+            ${cumulativeStats.totalImages.toLocaleString()}
+          </div>
+        </div>
+        <div class="stat-card">
+          <div style="font-size: var(--text-xs); color: var(--text-secondary);">Total Regions</div>
+          <div style="font-size: var(--text-2xl); font-weight: var(--font-bold); color: var(--text-primary);">
+            ${cumulativeStats.totalRegions.toLocaleString()}
+          </div>
+        </div>
+        <div class="stat-card">
+          <div style="font-size: var(--text-xs); color: var(--text-secondary);">API Calls</div>
+          <div style="font-size: var(--text-2xl); font-weight: var(--font-bold); color: var(--text-primary);">
+            ${cumulativeStats.totalApiCalls.toLocaleString()}
           </div>
         </div>
       </div>
-    </div>
 
-    <div class="settings-group">
-      <h3 class="settings-group-title">Processing Time</h3>
-      ${createStatRow('Detection', formatTime(currentAnalytics.phase1_time_ms))}
-      ${createStatRow('Translation', formatTime(currentAnalytics.phase2_time_ms))}
-      ${createStatRow('Text Removal', formatTime(currentAnalytics.phase3_time_ms))}
-      ${createStatRow('Rendering', formatTime(currentAnalytics.phase4_time_ms))}
-      ${createStatRow('Total', `<strong>${formatTime(currentAnalytics.total_time_ms)}</strong>`)}
-    </div>
+      <h3 class="settings-group-title" style="margin-top: var(--space-lg); margin-bottom: var(--space-md);">Averages</h3>
+      ${createStatRow('Avg. Images/Session', avgImagesPerSession.toFixed(1))}
+      ${createStatRow('Avg. Time/Session', formatTime(avgTimePerSession))}
+      ${totalTokens > 0 ? createStatRow('Total Tokens', totalTokens.toLocaleString()) : ''}
+      ${createStatRow('Cache Hit Rate', hitRate)}
 
-    ${
-      currentAnalytics.input_tokens || currentAnalytics.output_tokens
-        ? `
-    <div class="settings-group">
-      <h3 class="settings-group-title">Token Usage</h3>
-      ${createStatRow('Input Tokens', (currentAnalytics.input_tokens || 0).toLocaleString())}
-      ${createStatRow('Output Tokens', (currentAnalytics.output_tokens || 0).toLocaleString())}
+      ${cumulativeStats.firstProcessedAt ? `
+      <div style="margin-top: var(--space-md); padding-top: var(--space-md); border-top: 1px solid var(--border-subtle); font-size: var(--text-xs); color: var(--text-tertiary); text-align: center;">
+        First used: ${new Date(cumulativeStats.firstProcessedAt).toLocaleDateString()}
+      </div>
+      ` : ''}
     </div>
-    `
-        : ''
-    }
-
-    <div class="settings-group">
-      <h3 class="settings-group-title">Cache Performance</h3>
-      ${createStatRow('Hits', (currentAnalytics.cache_hits || 0).toString())}
-      ${createStatRow('Misses', (currentAnalytics.cache_misses || 0).toString())}
-      ${createStatRow('Hit Rate', calculateHitRate(currentAnalytics))}
-    </div>
-  `;
+    `;
+  }
 
   el.statsContent.innerHTML = html;
+
+  // Attach reset button listener
+  const resetBtn = document.getElementById('resetStats');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', async () => {
+      if (confirm('Reset all lifetime statistics? This cannot be undone.')) {
+        await resetCumulativeStats();
+        cumulativeStats = await loadCumulativeStats();
+        updateStatisticsPanel();
+        showToast('✓', 'Statistics reset successfully');
+      }
+    });
+  }
 }
 
-function createStatRow(label: string, value: string): string {
+function createStatRow(label: string, value: string, withMargin = false): string {
   return `
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-sm) 0;">
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-sm) 0; ${withMargin ? 'margin-top: var(--space-sm);' : ''}">
       <span style="font-size: var(--text-sm); color: var(--text-secondary);">${label}</span>
       <span style="font-size: var(--text-sm); color: var(--text-primary);">${value}</span>
     </div>
@@ -493,13 +634,6 @@ function createStatRow(label: string, value: string): string {
 function formatTime(ms: number | undefined): string {
   if (!ms) return 'N/A';
   return ms < 1000 ? `${Math.round(ms)}ms` : `${(ms / 1000).toFixed(2)}s`;
-}
-
-function calculateHitRate(analytics: Analytics): string {
-  const hits = analytics.cache_hits || 0;
-  const misses = analytics.cache_misses || 0;
-  const total = hits + misses;
-  return total === 0 ? 'N/A' : `${((hits / total) * 100).toFixed(1)}%`;
 }
 
 // ===== Toast Notifications =====
@@ -543,6 +677,8 @@ function setupEventListeners(): void {
   el.bananaMode.addEventListener('change', saveCurrentSettings);
   el.cache.addEventListener('change', saveCurrentSettings);
   el.metricsDetail.addEventListener('change', saveCurrentSettings);
+  el.geminiThinking.addEventListener('change', saveCurrentSettings);
+  el.tighterBounds.addEventListener('change', saveCurrentSettings);
   el.batchSize.addEventListener('change', saveCurrentSettings);
   el.sessionLimit.addEventListener('change', saveCurrentSettings);
 
@@ -554,6 +690,10 @@ function setupEventListeners(): void {
   el.mergeImg.addEventListener('change', async () => {
     await saveCurrentSettings();
     await syncServerToggle('mergeimg');
+  });
+  el.geminiThinking.addEventListener('change', async () => {
+    await saveCurrentSettings();
+    await syncServerToggle('thinking');
   });
 
   // Custom Dropdown
@@ -589,6 +729,98 @@ function setupEventListeners(): void {
     const inputs = el.apiKeysList.querySelectorAll<HTMLInputElement>('.api-key-input');
     inputs[inputs.length - 1]?.focus();
   });
+
+  // Setup number input steppers
+  setupNumberSteppers();
+}
+
+// ===== Number Input Steppers =====
+function setupNumberSteppers(): void {
+  const stepperButtons = document.querySelectorAll<HTMLButtonElement>('.number-stepper-btn');
+
+  stepperButtons.forEach((button) => {
+    const targetId = button.dataset.target;
+    if (!targetId) return;
+
+    const input = document.getElementById(targetId) as HTMLInputElement;
+    if (!input) return;
+
+    const isIncrement = button.classList.contains('increment');
+    const isDecrement = button.classList.contains('decrement');
+
+    // Update button states based on current value
+    const updateButtonStates = () => {
+      const value = parseInt(input.value) || 0;
+      const min = parseInt(input.min) || 0;
+      const max = parseInt(input.max) || Infinity;
+
+      const wrapper = input.closest('.number-input-wrapper');
+      if (!wrapper) return;
+
+      const decrementBtn = wrapper.querySelector('.number-stepper-btn.decrement') as HTMLButtonElement;
+      const incrementBtn = wrapper.querySelector('.number-stepper-btn.increment') as HTMLButtonElement;
+
+      if (decrementBtn) {
+        decrementBtn.disabled = value <= min;
+      }
+      if (incrementBtn) {
+        incrementBtn.disabled = value >= max;
+      }
+    };
+
+    // Button click handler
+    button.addEventListener('click', () => {
+      const currentValue = parseInt(input.value) || 0;
+      const min = parseInt(input.min) || 0;
+      const max = parseInt(input.max) || Infinity;
+      const step = parseInt(input.step) || 1;
+
+      let newValue = currentValue;
+
+      if (isIncrement && currentValue < max) {
+        newValue = Math.min(currentValue + step, max);
+      } else if (isDecrement && currentValue > min) {
+        newValue = Math.max(currentValue - step, min);
+      }
+
+      if (newValue !== currentValue) {
+        input.value = String(newValue);
+        // Trigger change event to save settings
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        updateButtonStates();
+      }
+    });
+
+    // Update button states on input change
+    input.addEventListener('input', updateButtonStates);
+    input.addEventListener('change', updateButtonStates);
+
+    // Keyboard support for input (arrow keys, etc.)
+    input.addEventListener('keydown', (e) => {
+      const min = parseInt(input.min) || 0;
+      const max = parseInt(input.max) || Infinity;
+      let currentValue = parseInt(input.value) || 0;
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (currentValue < max) {
+          input.value = String(Math.min(currentValue + 1, max));
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+          updateButtonStates();
+        }
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (currentValue > min) {
+          input.value = String(Math.max(currentValue - 1, min));
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+          updateButtonStates();
+        }
+      }
+    });
+
+    // Initialize button states
+    updateButtonStates();
+  });
 }
 
 // ===== Keyboard Shortcuts =====
@@ -609,6 +841,77 @@ function setupKeyboardShortcuts(): void {
   keyboardManager.listen();
 }
 
+// ===== Accordion Management =====
+const ACCORDION_STATE_KEY = 'accordionState';
+
+async function setupAccordion(): Promise<void> {
+  const accordionHeaders = document.querySelectorAll<HTMLButtonElement>('.accordion-header');
+
+  // Load saved state
+  const savedState = await loadAccordionState();
+
+  accordionHeaders.forEach((header) => {
+    const contentId = header.getAttribute('aria-controls');
+    if (!contentId) return;
+
+    const content = document.getElementById(contentId);
+    if (!content) return;
+
+    // Apply saved state (default: expanded)
+    const isExpanded = savedState[contentId] ?? true;
+    setAccordionState(header, content, isExpanded);
+
+    // Click handler
+    header.addEventListener('click', () => {
+      const currentlyExpanded = header.getAttribute('aria-expanded') === 'true';
+      const newState = !currentlyExpanded;
+
+      setAccordionState(header, content, newState);
+
+      // Save state
+      saveAccordionState(contentId, newState);
+    });
+
+    // Keyboard support (Enter/Space already handled by button, add arrow keys for navigation)
+    header.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const headers = Array.from(accordionHeaders);
+        const currentIndex = headers.indexOf(header);
+        const nextIndex = e.key === 'ArrowDown'
+          ? (currentIndex + 1) % headers.length
+          : (currentIndex - 1 + headers.length) % headers.length;
+        (headers[nextIndex] as HTMLButtonElement).focus();
+      }
+    });
+  });
+}
+
+function setAccordionState(header: HTMLButtonElement, content: HTMLElement, expanded: boolean): void {
+  header.setAttribute('aria-expanded', expanded.toString());
+  content.hidden = !expanded;
+}
+
+async function loadAccordionState(): Promise<Record<string, boolean>> {
+  try {
+    const result = await chrome.storage.local.get(ACCORDION_STATE_KEY);
+    return result[ACCORDION_STATE_KEY] || {};
+  } catch (error) {
+    console.error('[Accordion] Failed to load state:', error);
+    return {};
+  }
+}
+
+async function saveAccordionState(contentId: string, expanded: boolean): Promise<void> {
+  try {
+    const currentState = await loadAccordionState();
+    currentState[contentId] = expanded;
+    await chrome.storage.local.set({ [ACCORDION_STATE_KEY]: currentState });
+  } catch (error) {
+    console.error('[Accordion] Failed to save state:', error);
+  }
+}
+
 // ===== Message Listener =====
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   console.log('[Popup] Message:', msg);
@@ -619,8 +922,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     showProcessing(false);
     if (msg.analytics) {
       currentAnalytics = msg.analytics;
-      (el.tabStats as HTMLButtonElement).disabled = false;
-      updateStatisticsPanel();
+      // Reload cumulative stats after processing
+      loadCumulativeStats().then((stats) => {
+        cumulativeStats = stats;
+        updateStatisticsPanel();
+      });
     }
   } else if (msg.action === 'processing-error') {
     showProcessing(false);

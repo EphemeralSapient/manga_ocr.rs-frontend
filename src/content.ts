@@ -4,11 +4,13 @@
  */
 
 import type { ProcessConfig, ServerResult, Message } from './types';
+import { addSessionStats } from './utils/storage';
 
 console.log('[CONTENT] Manga Text Processor: Content script loaded');
 
 // State
 let isProcessing = false;
+let isInSelectionMode = false;
 const processedImages = new Map<HTMLImageElement, string>();
 
 /**
@@ -28,6 +30,12 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) =
       });
 
     return true; // Async response
+  }
+
+  if (message.action === 'enter-selection-mode' && message.config) {
+    enterSelectionMode(message.config);
+    sendResponse({ success: true });
+    return false;
   }
 
   if (message.action === 'restore-images') {
@@ -285,6 +293,11 @@ async function processPageImages(config: ProcessConfig) {
 
     // Send completion message with analytics
     sendCompletionMessage(result.analytics);
+
+    // Save statistics
+    if (result.analytics) {
+      await addSessionStats(result.analytics);
+    }
 
     console.log(
       `[CONTENT] Processing complete: ${appliedCount}/${imageBlobs.length} images applied`
@@ -716,6 +729,351 @@ function showNotification(
   }
 
   return dismiss;
+}
+
+/**
+ * Enter single-image selection mode
+ */
+function enterSelectionMode(config: ProcessConfig): void {
+  if (isInSelectionMode) {
+    console.log('[CONTENT] Already in selection mode');
+    return;
+  }
+
+  if (isProcessing) {
+    showNotification('Task in progress', 'warning', 'Please wait for the current operation to complete.');
+    return;
+  }
+
+  console.log('[CONTENT] Entering selection mode...');
+  isInSelectionMode = true;
+
+  // Create overlay with instructions
+  const overlay = document.createElement('div');
+  overlay.id = 'manga-selection-overlay';
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 999998;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: crosshair;
+    animation: mangaFadeIn 0.2s ease-out;
+  `;
+
+  const instructions = document.createElement('div');
+  instructions.style.cssText = `
+    background: rgba(30, 30, 30, 0.95);
+    color: rgba(255, 255, 255, 0.95);
+    padding: 24px 32px;
+    border-radius: 16px;
+    font-size: 16px;
+    font-weight: 500;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    pointer-events: none;
+    max-width: 400px;
+  `;
+  instructions.innerHTML = `
+    <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">Click on an image to translate</div>
+    <div style="font-size: 13px; color: rgba(255, 255, 255, 0.6);">Press ESC to cancel</div>
+  `;
+
+  overlay.appendChild(instructions);
+
+  // Add fade-in animation
+  if (!document.getElementById('manga-selection-styles')) {
+    const style = document.createElement('style');
+    style.id = 'manga-selection-styles';
+    style.textContent = `
+      @keyframes mangaFadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes mangaFadeOut {
+        from { opacity: 1; }
+        to { opacity: 0; }
+      }
+      .manga-image-highlight {
+        outline: 3px solid #10b981 !important;
+        outline-offset: 2px;
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.5) !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+      }
+      .manga-image-highlight:hover {
+        outline-width: 4px !important;
+        outline-offset: 3px;
+        box-shadow: 0 0 30px rgba(16, 185, 129, 0.7) !important;
+        transform: scale(1.02) !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  document.body.appendChild(overlay);
+
+  // Find all images
+  const allImages = Array.from(document.querySelectorAll<HTMLImageElement>('img'));
+  const largeImages = allImages.filter((img) => {
+    const rect = img.getBoundingClientRect();
+    return rect.width > 200 && rect.height > 200 && img.offsetParent !== null &&
+           img.naturalWidth > 200 && img.naturalHeight > 200;
+  });
+
+  console.log(`[CONTENT] Found ${largeImages.length} selectable images`);
+
+  // Highlight images on hover
+  const imageHoverHandler = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (largeImages.includes(target as HTMLImageElement)) {
+      (target as HTMLImageElement).classList.add('manga-image-highlight');
+    }
+  };
+
+  const imageLeaveHandler = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (largeImages.includes(target as HTMLImageElement)) {
+      (target as HTMLImageElement).classList.remove('manga-image-highlight');
+    }
+  };
+
+  // Click handler for images
+  const imageClickHandler = async (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+
+    if (largeImages.includes(target as HTMLImageElement)) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const selectedImage = target as HTMLImageElement;
+      console.log('[CONTENT] Image selected:', selectedImage.src);
+
+      // Exit selection mode
+      exitSelectionMode();
+
+      // Process single image
+      await processSingleImage(selectedImage, config);
+    }
+  };
+
+  // ESC key handler
+  const escHandler = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      console.log('[CONTENT] Selection mode cancelled');
+      exitSelectionMode();
+    }
+  };
+
+  // Overlay click handler (cancel on overlay click, but not on instructions)
+  const overlayClickHandler = (e: MouseEvent) => {
+    if (e.target === overlay) {
+      exitSelectionMode();
+    }
+  };
+
+  // Exit selection mode function
+  function exitSelectionMode() {
+    if (!isInSelectionMode) return;
+
+    isInSelectionMode = false;
+
+    // Remove event listeners
+    document.removeEventListener('mouseover', imageHoverHandler, true);
+    document.removeEventListener('mouseout', imageLeaveHandler, true);
+    document.removeEventListener('click', imageClickHandler, true);
+    document.removeEventListener('keydown', escHandler, true);
+    overlay.removeEventListener('click', overlayClickHandler);
+
+    // Remove highlights
+    largeImages.forEach(img => img.classList.remove('manga-image-highlight'));
+
+    // Fade out and remove overlay
+    overlay.style.animation = 'mangaFadeOut 0.2s ease-out';
+    setTimeout(() => overlay.remove(), 200);
+  }
+
+  // Attach event listeners
+  document.addEventListener('mouseover', imageHoverHandler, true);
+  document.addEventListener('mouseout', imageLeaveHandler, true);
+  document.addEventListener('click', imageClickHandler, true);
+  document.addEventListener('keydown', escHandler, true);
+  overlay.addEventListener('click', overlayClickHandler);
+}
+
+/**
+ * Process a single selected image
+ */
+async function processSingleImage(img: HTMLImageElement, config: ProcessConfig): Promise<void> {
+  if (isProcessing) {
+    showNotification('Task in progress', 'warning', 'Please wait for the current operation to complete.');
+    return;
+  }
+
+  console.log('[CONTENT] Processing single image...');
+
+  // Check if API keys are configured
+  if (!config.apiKeys || config.apiKeys.length === 0) {
+    showNotification('API keys required', 'error', 'Open extension settings and add your Gemini API keys to enable translation.');
+    return;
+  }
+
+  // Check server connection
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+    const healthResponse = await fetch(`${config.serverUrl}/health`, {
+      method: 'GET',
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!healthResponse.ok) {
+      showNotification('Server unavailable', 'error', 'The server returned an error. Verify the server is running correctly.');
+      return;
+    }
+  } catch (error) {
+    if ((error as Error).name === 'AbortError') {
+      showNotification('Connection timeout', 'error', 'Could not reach the server within 3 seconds. Check if the server is running.');
+    } else {
+      showNotification('Connection failed', 'error', `Unable to connect to ${config.serverUrl}. Verify the URL and server status.`);
+    }
+    return;
+  }
+
+  isProcessing = true;
+
+  try {
+    const dismissProcessing = showNotification('Processing image...', 'info', undefined, true);
+    sendProgressUpdate(0, 'Converting image...');
+
+    // Convert image to blob
+    const blob = await imageToBlob(img);
+    const originalSrc = img.src;
+
+    sendProgressUpdate(30, 'Converted image...');
+    console.log('[CONTENT] Converted single image to blob');
+
+    // Send to server
+    sendProgressUpdate(40, 'Sending to server...');
+
+    const formData = new FormData();
+    formData.append('images', blob, 'image_0.png');
+
+    // Add config
+    const serverConfig = {
+      apiKeys: config.apiKeys,
+      ocr_translation_model: config.translateModel,
+      includeFreeText: config.includeFreeText,
+      bananaMode: config.bananaMode,
+      textStroke: config.textStroke,
+      blurFreeTextBg: config.blurFreeTextBg,
+      cache: config.cache,
+      metricsDetail: config.metricsDetail,
+      useMask: config.useMask,
+      mergeImg: config.mergeImg,
+      sessionLimit: config.sessionLimit,
+    };
+    formData.append('config', JSON.stringify(serverConfig));
+
+    const response = await fetch(`${config.serverUrl}/process`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status} ${response.statusText}`);
+    }
+
+    sendProgressUpdate(70, 'Processing on server...');
+
+    const result: ServerResult = await response.json();
+    console.log('[CONTENT] Server response:', result);
+
+    sendProgressUpdate(90, 'Applying result...');
+
+    // Apply processed image
+    if (result.results && result.results[0]?.success && result.results[0].data_url) {
+      // Store original
+      processedImages.set(img, originalSrc);
+
+      // Replace with processed image
+      img.src = result.results[0].data_url;
+      img.dataset.processed = 'true';
+
+      console.log('[CONTENT] Applied processed image');
+    }
+
+    sendProgressUpdate(100, 'Complete!');
+
+    // Dismiss processing notification
+    dismissProcessing();
+
+    // Show completion notification
+    const analytics = result.analytics;
+    let detailText: string | undefined;
+
+    if (config.metricsDetail && analytics) {
+      const lines: string[] = [];
+
+      const totalSecs = analytics.total_time_ms ? (analytics.total_time_ms / 1000).toFixed(1) : '0';
+      const phase1 = analytics.phase1_time_ms ? (analytics.phase1_time_ms / 1000).toFixed(1) : null;
+      const phase2 = analytics.phase2_time_ms ? (analytics.phase2_time_ms / 1000).toFixed(1) : null;
+
+      let timeLine = `${totalSecs}s total`;
+      if (phase1 && phase2) {
+        timeLine += ` (detect: ${phase1}s, translate: ${phase2}s)`;
+      }
+      lines.push(timeLine);
+
+      const regions = analytics.total_regions || 0;
+      if (regions > 0) {
+        lines.push(`${regions} region${regions !== 1 ? 's' : ''} translated`);
+      }
+
+      detailText = lines.join('\n');
+    } else if (analytics) {
+      const durationSecs = analytics.total_time_ms
+        ? (analytics.total_time_ms / 1000).toFixed(1)
+        : null;
+      detailText = durationSecs ? `Completed in ${durationSecs}s` : undefined;
+    }
+
+    showNotification(
+      'Image processed successfully',
+      'success',
+      detailText,
+      false,
+      config.metricsDetail
+    );
+
+    // Send completion message with analytics
+    sendCompletionMessage(result.analytics);
+
+    // Save statistics
+    if (result.analytics) {
+      await addSessionStats(result.analytics);
+    }
+
+    console.log('[CONTENT] Single image processing complete');
+  } catch (error) {
+    console.error('[CONTENT] Single image processing error:', error);
+    showNotification('Processing failed', 'error', (error as Error).message);
+  } finally {
+    isProcessing = false;
+  }
 }
 
 console.log('[CONTENT] Content script ready');
