@@ -10,6 +10,10 @@ export interface ExtensionSettings {
   blurFreeTextBg: boolean;
   cache: boolean;
   metricsDetail: boolean;
+  useMask: boolean;
+  mergeImg: boolean;
+  batchSize: number;
+  sessionLimit: number;
   theme?: 'light' | 'dark' | 'auto';
 }
 
@@ -23,6 +27,10 @@ export interface ProcessConfig {
   blurFreeTextBg: boolean;
   cache: boolean;
   metricsDetail: boolean;
+  useMask: boolean;
+  mergeImg: boolean;
+  batchSize: number;
+  sessionLimit: number;
 }
 
 export interface Analytics {

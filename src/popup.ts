@@ -41,6 +41,10 @@ const el = {
   bananaMode: document.getElementById('bananaMode') as HTMLInputElement,
   cache: document.getElementById('cache') as HTMLInputElement,
   metricsDetail: document.getElementById('metricsDetail') as HTMLInputElement,
+  useMask: document.getElementById('useMask') as HTMLInputElement,
+  mergeImg: document.getElementById('mergeImg') as HTMLInputElement,
+  batchSize: document.getElementById('batchSize') as HTMLInputElement,
+  sessionLimit: document.getElementById('sessionLimit') as HTMLInputElement,
 
   // API Keys
   apiKeysList: document.getElementById('apiKeysList')!,
@@ -100,6 +104,10 @@ async function loadAndApplySettings(): Promise<void> {
     el.bananaMode.checked = settings.bananaMode;
     el.cache.checked = settings.cache;
     el.metricsDetail.checked = settings.metricsDetail;
+    el.useMask.checked = settings.useMask ?? true;
+    el.mergeImg.checked = settings.mergeImg ?? false;
+    el.batchSize.value = String(settings.batchSize ?? 5);
+    el.sessionLimit.value = String(settings.sessionLimit ?? 8);
 
     // Load API keys
     if (settings.apiKeys && settings.apiKeys.length > 0) {
@@ -132,6 +140,10 @@ async function saveCurrentSettings(): Promise<void> {
       bananaMode: el.bananaMode.checked,
       cache: el.cache.checked,
       metricsDetail: el.metricsDetail.checked,
+      useMask: el.useMask.checked,
+      mergeImg: el.mergeImg.checked,
+      batchSize: Math.max(1, Math.min(50, parseInt(el.batchSize.value) || 5)),
+      sessionLimit: Math.max(1, Math.min(32, parseInt(el.sessionLimit.value) || 8)),
     };
 
     await saveSettings(settings);
@@ -140,6 +152,75 @@ async function saveCurrentSettings(): Promise<void> {
   } catch (error) {
     console.error('[Popup] Failed to save settings:', error);
     showToast('✗', 'Failed to save settings');
+  }
+}
+
+// ===== Server Toggle Sync =====
+async function syncServerToggle(toggle: 'mask' | 'mergeimg', showNotification = true): Promise<void> {
+  const endpoint = toggle === 'mask' ? '/mask-toggle' : '/mergeimg-toggle';
+  const toggleName = toggle === 'mask' ? 'Mask mode' : 'Batch inference';
+
+  try {
+    const response = await fetch(`${serverUrl}${endpoint}`, {
+      method: 'POST',
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const enabled = toggle === 'mask' ? data.mask_enabled : data.merge_img_enabled;
+      console.log(`[Popup] ${toggleName} synced: ${enabled}`);
+      if (showNotification) {
+        showToast('✓', `${toggleName} ${enabled ? 'enabled' : 'disabled'}`);
+      }
+    } else {
+      throw new Error(`HTTP ${response.status}`);
+    }
+  } catch (error) {
+    console.error(`[Popup] Failed to sync ${toggleName}:`, error);
+    if (showNotification) {
+      showToast('⚠️', `Failed to sync ${toggleName} with server`);
+    }
+  }
+}
+
+// ===== Check Server Health and Sync Settings =====
+async function checkAndSyncServerSettings(): Promise<void> {
+  try {
+    // Fetch current server state
+    const response = await fetch(`${serverUrl}/health`);
+    if (!response.ok) {
+      return; // Server not available, skip sync
+    }
+
+    const data = await response.json();
+    if (!data.config) {
+      return; // No config in response
+    }
+
+    // Compare server state with local settings
+    const needsSyncMask = data.config.mask_enabled !== el.useMask.checked;
+    const needsSyncMergeImg = data.config.merge_img_enabled !== el.mergeImg.checked;
+
+    if (needsSyncMask || needsSyncMergeImg) {
+      console.log('[Popup] Server state mismatch detected, syncing frontend settings to server');
+
+      // Sync mismatched settings (silently)
+      if (needsSyncMask) {
+        console.log(`  - Mask: server=${data.config.mask_enabled}, local=${el.useMask.checked} → syncing`);
+        await syncServerToggle('mask', false);
+      }
+
+      if (needsSyncMergeImg) {
+        console.log(`  - MergeImg: server=${data.config.merge_img_enabled}, local=${el.mergeImg.checked} → syncing`);
+        await syncServerToggle('mergeimg', false);
+      }
+
+      console.log('[Popup] ✓ Frontend settings synced to server');
+    } else {
+      console.log('[Popup] ✓ Server state matches frontend, no sync needed');
+    }
+  } catch (error) {
+    console.error('[Popup] Failed to check/sync server settings:', error);
   }
 }
 
@@ -245,6 +326,8 @@ async function checkConnection(): Promise<void> {
     if (response.ok) {
       setConnectionStatus('connected');
       console.log('[Popup] Connected');
+      // Check server state and sync if needed (frontend is source of truth)
+      await checkAndSyncServerSettings();
     } else {
       throw new Error(`HTTP ${response.status}`);
     }
@@ -460,6 +543,18 @@ function setupEventListeners(): void {
   el.bananaMode.addEventListener('change', saveCurrentSettings);
   el.cache.addEventListener('change', saveCurrentSettings);
   el.metricsDetail.addEventListener('change', saveCurrentSettings);
+  el.batchSize.addEventListener('change', saveCurrentSettings);
+  el.sessionLimit.addEventListener('change', saveCurrentSettings);
+
+  // Server-synced toggles (also update server state)
+  el.useMask.addEventListener('change', async () => {
+    await saveCurrentSettings();
+    await syncServerToggle('mask');
+  });
+  el.mergeImg.addEventListener('change', async () => {
+    await saveCurrentSettings();
+    await syncServerToggle('mergeimg');
+  });
 
   // Custom Dropdown
   setupCustomDropdown();

@@ -702,6 +702,35 @@ body {
   border-color: var(--border-strong);
 }
 
+/* ===== Number Input ===== */
+.number-input {
+  width: 70px;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-family: inherit;
+  text-align: center;
+  transition: all var(--transition-base);
+}
+
+.number-input:hover {
+  border-color: var(--border-strong);
+}
+
+.number-input:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.number-input::-webkit-inner-spin-button,
+.number-input::-webkit-outer-spin-button {
+  opacity: 1;
+}
+
 /* ===== API Keys ===== */
 .api-keys-header {
   display: flex;

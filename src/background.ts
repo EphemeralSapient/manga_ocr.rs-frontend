@@ -33,6 +33,10 @@ chrome.commands.onCommand.addListener(async (command) => {
         'blurFreeTextBg',
         'cache',
         'metricsDetail',
+        'useMask',
+        'mergeImg',
+        'batchSize',
+        'sessionLimit',
       ]);
 
       const config = {
@@ -45,6 +49,10 @@ chrome.commands.onCommand.addListener(async (command) => {
         blurFreeTextBg: settings.blurFreeTextBg || false,
         cache: settings.cache !== undefined ? settings.cache : true,
         metricsDetail: settings.metricsDetail !== undefined ? settings.metricsDetail : true,
+        useMask: settings.useMask !== undefined ? settings.useMask : true,
+        mergeImg: settings.mergeImg || false,
+        batchSize: settings.batchSize || 5,
+        sessionLimit: settings.sessionLimit || 8,
       };
 
       // Send message to content script
@@ -136,6 +144,10 @@ chrome.runtime.onInstalled.addListener((details) => {
       blurFreeTextBg: false,
       cache: true,
       metricsDetail: true,
+      useMask: true,
+      mergeImg: false,
+      batchSize: 5,
+      sessionLimit: 8,
       theme: 'auto',
     };
 

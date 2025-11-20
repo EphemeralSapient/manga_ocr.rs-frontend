@@ -230,6 +230,70 @@
               </label>
             </div>
           </div>
+
+          <div class="settings-group">
+            <h3 class="settings-group-title">Server Options</h3>
+
+            <div class="field field-row">
+              <label for="useMask" class="field-label">
+                Use Mask Segmentation
+                <span class="field-help">Precise text removal using segmentation mask</span>
+              </label>
+              <label class="toggle" aria-label="Toggle mask segmentation">
+                <input type="checkbox" id="useMask" checked>
+                <span class="toggle-slider" aria-hidden="true"></span>
+              </label>
+            </div>
+
+            <div class="field field-row">
+              <label for="mergeImg" class="field-label">
+                Batch Inference Mode
+                <span class="field-help">Merge images for faster GPU processing</span>
+              </label>
+              <label class="toggle" aria-label="Toggle batch inference">
+                <input type="checkbox" id="mergeImg">
+                <span class="toggle-slider" aria-hidden="true"></span>
+              </label>
+            </div>
+
+            <div class="field field-row">
+              <label for="batchSize" class="field-label">
+                Batch Size
+                <span class="field-help">Number of pages per batch (1-50)</span>
+              </label>
+              <input
+                type="number"
+                id="batchSize"
+                class="number-input"
+                min="1"
+                max="50"
+                value="5"
+                aria-describedby="batch-size-help"
+              >
+              <span id="batch-size-help" class="sr-only">
+                Higher values process more images at once but use more memory
+              </span>
+            </div>
+
+            <div class="field field-row">
+              <label for="sessionLimit" class="field-label">
+                ONNX Session Limit
+                <span class="field-help">Max sessions per model (1-32, ~82MB each)</span>
+              </label>
+              <input
+                type="number"
+                id="sessionLimit"
+                class="number-input"
+                min="1"
+                max="32"
+                value="8"
+                aria-describedby="session-limit-help"
+              >
+              <span id="session-limit-help" class="sr-only">
+                Controls memory usage. Sessions allocated dynamically on demand.
+              </span>
+            </div>
+          </div>
         </div>
 
         <!-- API Keys Panel -->

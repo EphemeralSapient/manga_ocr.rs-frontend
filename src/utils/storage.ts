@@ -14,6 +14,10 @@ const DEFAULT_SETTINGS: ExtensionSettings = {
   blurFreeTextBg: false,
   cache: true,
   metricsDetail: true,
+  useMask: true,
+  mergeImg: false,
+  batchSize: 5,
+  sessionLimit: 8, // Default: will be max(cores/2, 8) on backend
   theme: 'auto',
 };
 

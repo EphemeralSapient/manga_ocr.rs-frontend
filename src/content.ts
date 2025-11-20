@@ -153,16 +153,19 @@ async function processPageImages(config: ProcessConfig) {
       formData.append('images', blob, `image_${index}.png`);
     });
 
-    // Add config
+    // Add config (using correct field names that match backend serde renames)
     const serverConfig = {
-      api_keys: config.apiKeys,
-      translate_model: config.translateModel,
-      include_free_text: config.includeFreeText,
-      banana_mode: config.bananaMode,
-      text_stroke: config.textStroke,
-      blur_free_text_bg: config.blurFreeTextBg,
+      apiKeys: config.apiKeys,
+      ocr_translation_model: config.translateModel,  // Fixed: backend expects ocr_translation_model
+      includeFreeText: config.includeFreeText,
+      bananaMode: config.bananaMode,
+      textStroke: config.textStroke,
+      blurFreeTextBg: config.blurFreeTextBg,
       cache: config.cache,
-      metrics_detail: config.metricsDetail,
+      metricsDetail: config.metricsDetail,
+      useMask: config.useMask,
+      mergeImg: config.mergeImg,
+      sessionLimit: config.sessionLimit,  // Max ONNX sessions per model
     };
     formData.append('config', JSON.stringify(serverConfig));
 
