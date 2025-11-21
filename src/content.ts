@@ -123,7 +123,7 @@ async function processPageImages(config: ProcessConfig) {
   // Check server connection
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
 
     const healthResponse = await fetch(`${config.serverUrl}/health`, {
       method: 'GET',
@@ -138,9 +138,9 @@ async function processPageImages(config: ProcessConfig) {
     }
   } catch (error) {
     if ((error as Error).name === 'AbortError') {
-      showNotification('Connection timeout', 'error', 'Could not reach the server within 3 seconds. Check if the server is running.');
+      showNotification('Connection timeout', 'error', 'Could not reach the server within 5 seconds. Check if the server is running and Local Network Access permission is granted.');
     } else if ((error as Error).message !== 'Server health check failed') {
-      showNotification('Connection failed', 'error', `Unable to connect to ${config.serverUrl}. Verify the URL and server status.`);
+      showNotification('Connection failed', 'error', `Unable to connect to ${config.serverUrl}. Verify the URL, server status, and Chrome Local Network Access permission.`);
     }
     throw error;
   }
@@ -233,10 +233,17 @@ async function processPageImages(config: ProcessConfig) {
     };
     formData.append('config', JSON.stringify(serverConfig));
 
+    // Add timeout for processing endpoint (90 seconds for OCR/translation)
+    const processController = new AbortController();
+    const processTimeoutId = setTimeout(() => processController.abort(), 90000);
+
     const response = await fetch(`${config.serverUrl}/process`, {
       method: 'POST',
       body: formData,
+      signal: processController.signal,
     });
+
+    clearTimeout(processTimeoutId);
 
     if (!response.ok) {
       throw new Error(`Server error: ${response.status} ${response.statusText}`);
@@ -987,7 +994,7 @@ async function processSingleImage(img: HTMLImageElement, config: ProcessConfig):
   // Check server connection
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
 
     const healthResponse = await fetch(`${config.serverUrl}/health`, {
       method: 'GET',
@@ -1002,9 +1009,9 @@ async function processSingleImage(img: HTMLImageElement, config: ProcessConfig):
     }
   } catch (error) {
     if ((error as Error).name === 'AbortError') {
-      showNotification('Connection timeout', 'error', 'Could not reach the server within 3 seconds. Check if the server is running.');
+      showNotification('Connection timeout', 'error', 'Could not reach the server within 5 seconds. Check if the server is running and Local Network Access permission is granted.');
     } else {
-      showNotification('Connection failed', 'error', `Unable to connect to ${config.serverUrl}. Verify the URL and server status.`);
+      showNotification('Connection failed', 'error', `Unable to connect to ${config.serverUrl}. Verify the URL, server status, and Chrome Local Network Access permission.`);
     }
     return;
   }
@@ -1044,10 +1051,17 @@ async function processSingleImage(img: HTMLImageElement, config: ProcessConfig):
     };
     formData.append('config', JSON.stringify(serverConfig));
 
+    // Add timeout for processing endpoint (90 seconds for OCR/translation)
+    const processController = new AbortController();
+    const processTimeoutId = setTimeout(() => processController.abort(), 90000);
+
     const response = await fetch(`${config.serverUrl}/process`, {
       method: 'POST',
       body: formData,
+      signal: processController.signal,
     });
+
+    clearTimeout(processTimeoutId);
 
     if (!response.ok) {
       throw new Error(`Server error: ${response.status} ${response.statusText}`);

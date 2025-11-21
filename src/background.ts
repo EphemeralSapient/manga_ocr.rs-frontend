@@ -110,26 +110,42 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) =
  * Fetch image from URL and return as base64 (bypasses CORS in background script)
  */
 async function fetchImageAsBase64(url: string): Promise<string> {
-  const response = await fetch(url);
+  // Add timeout for image fetch (30 seconds)
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-  if (!response.ok) {
-    throw new Error(`Fetch failed: ${response.status} ${response.statusText}`);
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`Fetch failed: ${response.status} ${response.statusText}`);
+    }
+
+    const blob = await response.blob();
+
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          resolve(reader.result);
+        } else {
+          reject(new Error('Failed to convert to base64'));
+        }
+      };
+      reader.onerror = () => reject(new Error('FileReader error'));
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if ((error as Error).name === 'AbortError') {
+      throw new Error('Image fetch timeout after 30 seconds');
+    }
+    throw error;
   }
-
-  const blob = await response.blob();
-
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result === 'string') {
-        resolve(reader.result);
-      } else {
-        reject(new Error('Failed to convert to base64'));
-      }
-    };
-    reader.onerror = () => reject(new Error('FileReader error'));
-    reader.readAsDataURL(blob);
-  });
 }
 
 /**

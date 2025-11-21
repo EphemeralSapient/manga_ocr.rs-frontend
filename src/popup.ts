@@ -427,7 +427,11 @@ async function checkConnection(): Promise<void> {
   } catch (error) {
     console.error('[Popup] Connection failed:', error);
     setConnectionStatus('error');
-    showToast('⚠️', 'Server offline or unreachable');
+    if ((error as Error).name === 'AbortError') {
+      showToast('⚠️', 'Connection timeout - Check server and Local Network Access permission');
+    } else {
+      showToast('⚠️', 'Server offline or unreachable - Check Local Network Access permission');
+    }
   }
 }
 
