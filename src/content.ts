@@ -4,9 +4,65 @@
  */
 
 import type { ProcessConfig, ServerResult, Message } from './types';
-import { addSessionStats } from './utils/storage';
 
 console.log('[CONTENT] Manga Text Processor: Content script loaded');
+
+// Inline statistics storage (avoids module splitting issues)
+async function addSessionStats(sessionAnalytics: {
+  total_images?: number;
+  total_regions?: number;
+  simple_bg_count?: number;
+  complex_bg_count?: number;
+  api_calls_simple?: number;
+  api_calls_complex?: number;
+  api_calls_banana?: number;
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_hits?: number;
+  cache_misses?: number;
+  total_time_ms?: number;
+}): Promise<void> {
+  try {
+    const STATS_KEY = 'cumulativeStats';
+    const result = await chrome.storage.local.get(STATS_KEY);
+    const current = result[STATS_KEY] || {
+      totalSessions: 0,
+      totalImages: 0,
+      totalRegions: 0,
+      totalSimpleBg: 0,
+      totalComplexBg: 0,
+      totalApiCalls: 0,
+      totalInputTokens: 0,
+      totalOutputTokens: 0,
+      totalCacheHits: 0,
+      totalCacheMisses: 0,
+      totalProcessingTimeMs: 0,
+    };
+
+    const updated = {
+      totalSessions: current.totalSessions + 1,
+      totalImages: current.totalImages + (sessionAnalytics.total_images || 0),
+      totalRegions: current.totalRegions + (sessionAnalytics.total_regions || 0),
+      totalSimpleBg: current.totalSimpleBg + (sessionAnalytics.simple_bg_count || 0),
+      totalComplexBg: current.totalComplexBg + (sessionAnalytics.complex_bg_count || 0),
+      totalApiCalls: current.totalApiCalls +
+        (sessionAnalytics.api_calls_simple || 0) +
+        (sessionAnalytics.api_calls_complex || 0) +
+        (sessionAnalytics.api_calls_banana || 0),
+      totalInputTokens: current.totalInputTokens + (sessionAnalytics.input_tokens || 0),
+      totalOutputTokens: current.totalOutputTokens + (sessionAnalytics.output_tokens || 0),
+      totalCacheHits: current.totalCacheHits + (sessionAnalytics.cache_hits || 0),
+      totalCacheMisses: current.totalCacheMisses + (sessionAnalytics.cache_misses || 0),
+      totalProcessingTimeMs: current.totalProcessingTimeMs + (sessionAnalytics.total_time_ms || 0),
+      lastProcessedAt: Date.now(),
+      firstProcessedAt: current.firstProcessedAt || Date.now(),
+    };
+
+    await chrome.storage.local.set({ [STATS_KEY]: updated });
+  } catch (error) {
+    console.error('[CONTENT] Failed to save cumulative stats:', error);
+  }
+}
 
 // State
 let isProcessing = false;

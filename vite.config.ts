@@ -24,7 +24,18 @@ export default defineConfig({
           }
           return 'assets/[name]-[hash].js';
         },
-        chunkFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: (chunkInfo) => {
+          return 'assets/[name]-[hash].js';
+        },
+        manualChunks: (id) => {
+          // Force inline bundling for content and background scripts
+          // Don't create any shared chunks - duplicate code instead
+          if (id.includes('node_modules')) {
+            return 'vendor'; // Only for popup
+          }
+          // Return undefined to prevent chunk creation for src files
+          return undefined;
+        },
         assetFileNames: (assetInfo) => {
           // CSS files
           if (assetInfo.name?.endsWith('.css')) {
@@ -39,6 +50,8 @@ export default defineConfig({
           objectShorthand: true,
         },
       },
+      // Prevent shared chunks between entries
+      preserveEntrySignatures: 'strict',
       treeshake: {
         moduleSideEffects: true,
         propertyReadSideEffects: false,
