@@ -8,18 +8,24 @@ const DEFAULT_SETTINGS: ExtensionSettings = {
   serverUrl: 'http://localhost:1420',
   apiKeys: [],
   translateModel: 'gemini-flash-latest',
+  targetLanguage: 'English',
+  fontSource: 'builtin',
+  fontFamily: 'arial',
+  googleFontFamily: 'Roboto',
   includeFreeText: false,
   bananaMode: false,
   textStroke: false,
-  blurFreeTextBg: false,
+  backgroundType: 'blur',
   cache: true,
   metricsDetail: true,
   geminiThinking: false,
   tighterBounds: false,
+  filterOrphanRegions: false,
   useMask: true,
   mergeImg: false,
   batchSize: 5,
   sessionLimit: 8, // Default: will be max(cores/2, 8) on backend
+  targetSize: 640, // Default: 640px (range: 0 for source, or [320, 2048])
   theme: 'auto',
 };
 
@@ -121,6 +127,9 @@ export interface CumulativeStats {
   totalRegions: number;
   totalSimpleBg: number;
   totalComplexBg: number;
+  totalLabel0: number;
+  totalLabel1: number;
+  totalLabel2: number;
   totalApiCalls: number;
   totalInputTokens: number;
   totalOutputTokens: number;
@@ -142,6 +151,9 @@ export async function loadCumulativeStats(): Promise<CumulativeStats> {
       totalRegions: 0,
       totalSimpleBg: 0,
       totalComplexBg: 0,
+      totalLabel0: 0,
+      totalLabel1: 0,
+      totalLabel2: 0,
       totalApiCalls: 0,
       totalInputTokens: 0,
       totalOutputTokens: 0,
@@ -157,6 +169,9 @@ export async function loadCumulativeStats(): Promise<CumulativeStats> {
       totalRegions: 0,
       totalSimpleBg: 0,
       totalComplexBg: 0,
+      totalLabel0: 0,
+      totalLabel1: 0,
+      totalLabel2: 0,
       totalApiCalls: 0,
       totalInputTokens: 0,
       totalOutputTokens: 0,
@@ -172,6 +187,9 @@ export async function addSessionStats(sessionAnalytics: {
   total_regions?: number;
   simple_bg_count?: number;
   complex_bg_count?: number;
+  label_0_count?: number;
+  label_1_count?: number;
+  label_2_count?: number;
   api_calls_simple?: number;
   api_calls_complex?: number;
   api_calls_banana?: number;
@@ -190,6 +208,9 @@ export async function addSessionStats(sessionAnalytics: {
       totalRegions: current.totalRegions + (sessionAnalytics.total_regions || 0),
       totalSimpleBg: current.totalSimpleBg + (sessionAnalytics.simple_bg_count || 0),
       totalComplexBg: current.totalComplexBg + (sessionAnalytics.complex_bg_count || 0),
+      totalLabel0: current.totalLabel0 + (sessionAnalytics.label_0_count || 0),
+      totalLabel1: current.totalLabel1 + (sessionAnalytics.label_1_count || 0),
+      totalLabel2: current.totalLabel2 + (sessionAnalytics.label_2_count || 0),
       totalApiCalls: current.totalApiCalls +
         (sessionAnalytics.api_calls_simple || 0) +
         (sessionAnalytics.api_calls_complex || 0) +

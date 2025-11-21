@@ -334,7 +334,7 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .tab-panel {
@@ -522,16 +522,19 @@ body {
   transition:
     max-height var(--transition-base) ease-out,
     opacity var(--transition-base) ease-out,
-    padding var(--transition-base) ease-out;
+    padding var(--transition-base) ease-out,
+    overflow 0s var(--transition-base);
 }
 
 .accordion-content:not([hidden]) {
   max-height: 2000px;
   opacity: 1;
+  overflow: visible;
   transition:
     max-height var(--transition-base) ease-in,
     opacity var(--transition-base) ease-in,
-    padding var(--transition-base) ease-in;
+    padding var(--transition-base) ease-in,
+    overflow 0s 0s;
 }
 
 /* Fields */
@@ -539,6 +542,13 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
+  position: relative;
+}
+
+.field:focus-within,
+.field:has(.custom-dropdown.open),
+.field:has(.combobox-input[aria-expanded="true"]) {
+  z-index: calc(var(--z-dropdown) + 1);
 }
 
 .field-row {
@@ -649,7 +659,7 @@ body {
   list-style: none;
   margin: 0;
   padding: var(--space-xs) 0;
-  z-index: 100;
+  z-index: var(--z-dropdown);
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.15),
     0 4px 8px rgba(0, 0, 0, 0.1);
@@ -663,6 +673,28 @@ body {
     opacity var(--transition-fast),
     transform var(--transition-fast),
     visibility 0s var(--transition-fast);
+}
+
+/* Dropdown opens upward when near bottom */
+.custom-dropdown.open-upward .dropdown-menu {
+  top: auto;
+  bottom: 100%;
+  border-top: 1px solid var(--primary);
+  border-bottom: none;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  transform: translateY(8px) scaleY(0.95);
+  transform-origin: bottom center;
+}
+
+.custom-dropdown.open-upward .dropdown-trigger[aria-expanded="true"] {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-bottom-left-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+}
+
+.custom-dropdown.open-upward.open .dropdown-menu {
+  transform: translateY(0) scaleY(1);
 }
 
 .custom-dropdown.open .dropdown-menu {
@@ -717,6 +749,384 @@ body {
 .dropdown-item.selected .dropdown-check {
   opacity: 1;
   transform: scale(1);
+}
+
+/* Combobox - Text Input with Suggestions */
+.combobox-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.combobox-input {
+  width: 100%;
+  padding: var(--space-md);
+  padding-right: var(--space-3xl);
+  background: linear-gradient(
+    135deg,
+    var(--bg-input) 0%,
+    var(--bg-elevated) 100%
+  );
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  transition: all var(--transition-base);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.02),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.combobox-input::placeholder {
+  color: var(--text-tertiary);
+  font-weight: var(--font-normal);
+}
+
+.combobox-input:hover {
+  border-color: var(--border-strong);
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.12),
+    0 1px 0 rgba(255, 255, 255, 0.02),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.combobox-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow:
+    var(--shadow-focus),
+    0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.combobox-input[aria-expanded="true"] {
+  border-color: var(--primary);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.combobox-clear,
+.combobox-toggle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  transition: all var(--transition-fast);
+}
+
+.combobox-toggle {
+  right: 0;
+  width: 32px;
+}
+
+.combobox-clear {
+  right: 32px;
+  width: 24px;
+  opacity: 0;
+  transform: scale(0.8);
+  pointer-events: none;
+}
+
+.combobox-clear.visible {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+.combobox-clear svg {
+  width: 14px;
+  height: 14px;
+}
+
+.combobox-toggle:hover {
+  color: var(--primary);
+  background: var(--bg-hover);
+}
+
+.combobox-clear:hover {
+  color: var(--error);
+}
+
+.combobox-clear:hover svg circle {
+  opacity: 0.25;
+}
+
+.combobox-clear:active {
+  transform: scale(0.9);
+}
+
+.combobox-toggle:focus {
+  outline: none;
+  color: var(--primary);
+}
+
+.combobox-toggle .dropdown-arrow {
+  width: 16px;
+  height: 16px;
+  transition: transform var(--transition-base);
+}
+
+.combobox-input[aria-expanded="true"] ~ .combobox-toggle .dropdown-arrow {
+  transform: rotate(180deg);
+  color: var(--primary);
+}
+
+.combobox-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--primary);
+  border-top: none;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  list-style: none;
+  margin: 0;
+  padding: var(--space-xs) 0;
+  z-index: var(--z-dropdown);
+  max-height: 240px;
+  overflow-y: auto;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.15),
+    0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.combobox-menu[hidden] {
+  display: none;
+}
+
+.combobox-item {
+  padding: var(--space-md) var(--space-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+}
+
+.combobox-item:hover,
+.combobox-item[aria-selected="true"] {
+  background: var(--bg-hover);
+  padding-left: calc(var(--space-lg) + 4px);
+}
+
+.combobox-item.highlighted {
+  background: var(--primary-dim);
+  color: var(--primary);
+}
+
+.combobox-item.highlighted:hover {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+/* Connected Button Group */
+.button-group {
+  display: flex;
+  width: 100%;
+  background: var(--bg-input);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.button-group-item {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  white-space: nowrap;
+  position: relative;
+}
+
+.button-group-item:last-child {
+  border-right: none;
+}
+
+.button-group-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.button-group-item:active {
+  background: var(--bg-active);
+}
+
+.button-group-item.active {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(79, 144, 240, 0.08) 100%);
+  color: var(--primary);
+  font-weight: var(--font-semibold);
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.3);
+  z-index: 1;
+}
+
+.button-group-item.active::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(59, 130, 246, 0.05) 0%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+.button-group-item:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+  z-index: 2;
+}
+
+.button-group-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.button-group-item.active .button-group-icon {
+  color: var(--primary);
+}
+
+.button-group-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  background: var(--bg-base);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: var(--font-bold);
+  line-height: 1;
+  min-width: 22px;
+  border: 1px solid var(--border-subtle);
+}
+
+.button-group-item.active .button-group-badge {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: var(--primary);
+}
+
+/* Smooth field transitions */
+.field {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.field[hidden] {
+  display: block !important;
+  opacity: 0;
+  transform: translateY(-8px);
+  max-height: 0;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+}
+
+.field:not([hidden]) {
+  opacity: 1;
+  transform: translateY(0);
+  max-height: 500px;
+}
+
+/* Font Preview */
+.font-preview {
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+}
+
+.font-preview-label {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-xs);
+  font-weight: var(--font-medium);
+}
+
+.font-preview-text {
+  font-size: 20px;
+  color: var(--text-primary);
+  padding: var(--space-sm);
+  background: var(--bg-base);
+  border-radius: var(--radius-sm);
+  text-align: center;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: var(--space-xs);
+  transition: all 0.3s ease;
+  line-height: 1.5;
+  position: relative;
+}
+
+.font-preview-text.loading {
+  color: var(--text-tertiary);
+}
+
+.font-preview-text.loading::after {
+  content: '';
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--primary),
+    transparent
+  );
+  animation: loadingSlide 1.5s ease-in-out infinite;
+}
+
+@keyframes loadingSlide {
+  0% {
+    transform: translateX(-50%) scaleX(0);
+    opacity: 0;
+  }
+  50% {
+    transform: translateX(-50%) scaleX(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) scaleX(0);
+    opacity: 0;
+  }
+}
+
+.font-loading-text {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-style: italic;
 }
 
 /* Toggle Switch */

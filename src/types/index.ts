@@ -4,18 +4,24 @@ export interface ExtensionSettings {
   serverUrl: string;
   apiKeys: string[];
   translateModel: string;
+  targetLanguage: string;
+  fontSource: string;
+  fontFamily: string;
+  googleFontFamily: string;
   includeFreeText: boolean;
   bananaMode: boolean;
   textStroke: boolean;
-  blurFreeTextBg: boolean;
+  backgroundType: string;
   cache: boolean;
   metricsDetail: boolean;
   geminiThinking: boolean;
   tighterBounds: boolean;
+  filterOrphanRegions: boolean;
   useMask: boolean;
   mergeImg: boolean;
   batchSize: number;
   sessionLimit: number;
+  targetSize: number;
   theme?: 'light' | 'dark' | 'auto';
 }
 
@@ -23,18 +29,24 @@ export interface ProcessConfig {
   serverUrl: string;
   apiKeys: string[];
   translateModel: string;
+  targetLanguage: string;
+  fontSource: string;
+  fontFamily: string;
+  googleFontFamily: string;
   includeFreeText: boolean;
   bananaMode: boolean;
   textStroke: boolean;
-  blurFreeTextBg: boolean;
+  backgroundType: string;
   cache: boolean;
   metricsDetail: boolean;
   geminiThinking: boolean;
   tighterBounds: boolean;
+  filterOrphanRegions: boolean;
   useMask: boolean;
   mergeImg: boolean;
   batchSize: number;
   sessionLimit: number;
+  targetSize: number;
 }
 
 export interface Analytics {
@@ -42,6 +54,9 @@ export interface Analytics {
   total_regions?: number;
   simple_bg_count?: number;
   complex_bg_count?: number;
+  label_0_count?: number;
+  label_1_count?: number;
+  label_2_count?: number;
   api_calls_simple?: number;
   api_calls_complex?: number;
   api_calls_banana?: number;

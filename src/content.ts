@@ -221,15 +221,22 @@ async function processPageImages(config: ProcessConfig) {
     const serverConfig = {
       apiKeys: config.apiKeys,
       ocr_translation_model: config.translateModel,  // Fixed: backend expects ocr_translation_model
+      targetLanguage: config.targetLanguage,  // Target language for translation
+      font_source: config.fontSource,  // Font source: "builtin" or "google"
+      font_family: config.fontFamily,  // Built-in font family
+      google_font_family: config.googleFontFamily,  // Google Font family name
       includeFreeText: config.includeFreeText,
       bananaMode: config.bananaMode,
       textStroke: config.textStroke,
-      blurFreeTextBg: config.blurFreeTextBg,
+      backgroundType: config.backgroundType,
       cache: config.cache,
       metricsDetail: config.metricsDetail,
+      tighterBounds: config.tighterBounds,
+      filterOrphanRegions: config.filterOrphanRegions,
       useMask: config.useMask,
       mergeImg: config.mergeImg,
       sessionLimit: config.sessionLimit,  // Max ONNX sessions per model
+      targetSize: config.targetSize,  // Detection model input size (0 = source, or [320, 2048])
     };
     formData.append('config', JSON.stringify(serverConfig));
 
@@ -1042,9 +1049,11 @@ async function processSingleImage(img: HTMLImageElement, config: ProcessConfig):
       includeFreeText: config.includeFreeText,
       bananaMode: config.bananaMode,
       textStroke: config.textStroke,
-      blurFreeTextBg: config.blurFreeTextBg,
+      backgroundType: config.backgroundType,
       cache: config.cache,
       metricsDetail: config.metricsDetail,
+      tighterBounds: config.tighterBounds,
+      filterOrphanRegions: config.filterOrphanRegions,
       useMask: config.useMask,
       mergeImg: config.mergeImg,
       sessionLimit: config.sessionLimit,

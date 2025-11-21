@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Manga Text Processor</title>
-  <script type="module" crossorigin src="./assets/popup-8ir7lD8_.js"></script>
-  <link rel="stylesheet" crossorigin href="./styles/popup-DL-ahZef.css">
+  <script type="module" crossorigin src="./assets/popup-BPiBkVAB.js"></script>
+  <link rel="stylesheet" crossorigin href="./styles/popup-g0z3OvZF.css">
 </head>
 <body data-theme="dark">
   <div class="app" role="application" aria-label="Manga Text Processor">
@@ -118,62 +118,249 @@
             <h3 class="settings-group-title">Translation Settings</h3>
 
             <div class="field">
-              <label for="translateModel" class="field-label">
+              <label class="field-label">
                 Translation Model
                 <span class="field-help">Choose the AI model for translation</span>
               </label>
-              <div class="custom-dropdown" id="modelDropdown">
-                <button type="button" class="dropdown-trigger" id="translateModel" aria-haspopup="listbox" aria-expanded="false" aria-describedby="translate-model-help">
-                  <span class="dropdown-selected">Gemini Flash — Latest</span>
+              <div class="button-group" role="group" aria-label="Translation model selection">
+                <button
+                  type="button"
+                  class="button-group-item active"
+                  id="flashBtn"
+                  data-value="gemini-flash-latest"
+                  aria-pressed="true"
+                >
+                  <span>Flash</span>
+                </button>
+                <button
+                  type="button"
+                  class="button-group-item"
+                  id="liteBtn"
+                  data-value="gemini-flash-lite-latest"
+                  aria-pressed="false"
+                >
+                  <span>Lite</span>
+                </button>
+                <button
+                  type="button"
+                  class="button-group-item"
+                  id="proBtn"
+                  data-value="gemini-pro-latest"
+                  aria-pressed="false"
+                >
+                  <span>Pro</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="targetLanguage" class="field-label">
+                Target Language
+                <span class="field-help">Type any language or choose from suggestions</span>
+              </label>
+              <div class="combobox-wrapper">
+                <input
+                  type="text"
+                  id="targetLanguage"
+                  class="combobox-input"
+                  placeholder="e.g., English, Spanish, French..."
+                  value="English"
+                  aria-describedby="target-language-help"
+                  aria-autocomplete="list"
+                  aria-controls="languageSuggestions"
+                  role="combobox"
+                  aria-expanded="false"
+                >
+                <button type="button" class="combobox-clear" id="languageClear" aria-label="Clear language" tabindex="-1" style="display: none;">
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                    <circle cx="8" cy="8" r="7" opacity="0.15" fill="currentColor"/>
+                    <line x1="5" y1="5" x2="11" y2="11"></line>
+                    <line x1="11" y1="5" x2="5" y2="11"></line>
+                  </svg>
+                </button>
+                <button type="button" class="combobox-toggle" id="languageToggle" aria-label="Show language suggestions" tabindex="-1">
                   <svg class="dropdown-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="6 9 12 15 18 9"></polyline>
                   </svg>
                 </button>
-                <ul class="dropdown-menu" role="listbox" aria-label="Translation model options">
-                  <li class="dropdown-item selected" role="option" data-value="gemini-flash-latest" aria-selected="true">
-                    <span class="dropdown-item-text">Gemini Flash — Latest</span>
+                <ul class="combobox-menu" id="languageSuggestions" role="listbox" aria-label="Language suggestions" hidden>
+                  <li class="combobox-item" role="option" data-value="English">English</li>
+                  <li class="combobox-item" role="option" data-value="Spanish">Spanish</li>
+                  <li class="combobox-item" role="option" data-value="French">French</li>
+                  <li class="combobox-item" role="option" data-value="German">German</li>
+                  <li class="combobox-item" role="option" data-value="Italian">Italian</li>
+                  <li class="combobox-item" role="option" data-value="Portuguese">Portuguese</li>
+                  <li class="combobox-item" role="option" data-value="Japanese">Japanese</li>
+                  <li class="combobox-item" role="option" data-value="Chinese">Chinese</li>
+                  <li class="combobox-item" role="option" data-value="Korean">Korean</li>
+                  <li class="combobox-item" role="option" data-value="Russian">Russian</li>
+                  <li class="combobox-item" role="option" data-value="Arabic">Arabic</li>
+                  <li class="combobox-item" role="option" data-value="Hindi">Hindi</li>
+                  <li class="combobox-item" role="option" data-value="Vietnamese">Vietnamese</li>
+                  <li class="combobox-item" role="option" data-value="Thai">Thai</li>
+                </ul>
+              </div>
+              <span id="target-language-help" class="sr-only">
+                Type any language name or select from common suggestions
+              </span>
+            </div>
+
+            <div class="field">
+              <label class="field-label">
+                Font Source
+                <span class="field-help">Choose where to get fonts from</span>
+              </label>
+              <div class="button-group" role="group" aria-label="Font source selection">
+                <button
+                  type="button"
+                  class="button-group-item active"
+                  id="builtinChip"
+                  data-value="builtin"
+                  aria-pressed="true"
+                >
+                  <svg class="button-group-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                  </svg>
+                  <span>Built-in</span>
+                  <span class="button-group-badge">6</span>
+                </button>
+                <button
+                  type="button"
+                  class="button-group-item"
+                  id="googleChip"
+                  data-value="google"
+                  aria-pressed="false"
+                >
+                  <svg class="button-group-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"></path>
+                  </svg>
+                  <span>Google</span>
+                  <span class="button-group-badge">1000+</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Built-in Fonts Dropdown -->
+            <div class="field" id="builtinFontField">
+              <label for="fontFamily" class="field-label">
+                Built-in Font
+                <span class="field-help">Fast, offline fonts</span>
+              </label>
+              <div class="custom-dropdown" id="fontDropdown">
+                <button type="button" class="dropdown-trigger" id="fontFamily" aria-haspopup="listbox" aria-expanded="false" aria-describedby="font-family-help">
+                  <span class="dropdown-selected">Arial</span>
+                  <svg class="dropdown-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </button>
+                <ul class="dropdown-menu" role="listbox" aria-label="Built-in font options">
+                  <li class="dropdown-item selected" role="option" data-value="arial" aria-selected="true">
+                    <span class="dropdown-item-text">Arial</span>
                     <svg class="dropdown-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                       <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
                   </li>
-                  <li class="dropdown-item" role="option" data-value="gemini-2.5-flash" aria-selected="false">
-                    <span class="dropdown-item-text">Gemini Flash 2.5</span>
+                  <li class="dropdown-item" role="option" data-value="comic-sans" aria-selected="false">
+                    <span class="dropdown-item-text">Comic Sans</span>
                     <svg class="dropdown-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                       <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
                   </li>
-                  <li class="dropdown-item" role="option" data-value="gemini-flash-lite-latest" aria-selected="false">
-                    <span class="dropdown-item-text">Gemini Flash Lite — Latest</span>
+                  <li class="dropdown-item" role="option" data-value="anime-ace" aria-selected="false">
+                    <span class="dropdown-item-text">Anime Ace</span>
                     <svg class="dropdown-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                       <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
                   </li>
-                  <li class="dropdown-item" role="option" data-value="gemini-2.5-pro" aria-selected="false">
-                    <span class="dropdown-item-text">Gemini Pro 2.5</span>
+                  <li class="dropdown-item" role="option" data-value="anime-ace-3" aria-selected="false">
+                    <span class="dropdown-item-text">Anime Ace 3</span>
+                    <svg class="dropdown-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </li>
+                  <li class="dropdown-item" role="option" data-value="ms-yahei" aria-selected="false">
+                    <span class="dropdown-item-text">Microsoft YaHei (CJK)</span>
+                    <svg class="dropdown-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </li>
+                  <li class="dropdown-item" role="option" data-value="noto-sans-mono-cjk" aria-selected="false">
+                    <span class="dropdown-item-text">Noto Sans Mono (CJK)</span>
                     <svg class="dropdown-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                       <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
                   </li>
                 </ul>
               </div>
-              <span id="translate-model-help" class="sr-only">
-                Faster models process quicker but may be less accurate
+              <span id="font-family-help" class="sr-only">
+                Select from 6 built-in fonts optimized for manga
               </span>
+
+              <!-- Font Preview -->
+              <div class="font-preview" id="builtinFontPreview">
+                <div class="font-preview-label">Preview:</div>
+                <div class="font-preview-text" id="builtinFontPreviewText">
+                  AaBbCc 123 あいうえお 你好
+                </div>
+              </div>
             </div>
 
-            <div class="field field-row">
-              <label for="includeFreeText" class="field-label">
-                Include Free Text
-                <span class="field-help">Translate unstructured text in images</span>
+            <!-- Google Fonts Combobox -->
+            <div class="field" id="googleFontField" hidden>
+              <label for="googleFontFamily" class="field-label">
+                Google Font
+                <span class="field-help">Type or choose from 1000+ fonts</span>
               </label>
-              <label class="toggle" aria-label="Toggle include free text">
-                <input type="checkbox" id="includeFreeText" aria-describedby="free-text-help">
-                <span class="toggle-slider" aria-hidden="true"></span>
-              </label>
-              <span id="free-text-help" class="sr-only">
-                When enabled, processes free-form text in addition to speech bubbles
+              <div class="combobox-wrapper">
+                <input
+                  type="text"
+                  id="googleFontFamily"
+                  class="combobox-input"
+                  placeholder="e.g., Roboto, Comic Neue, Noto Sans JP..."
+                  value="Roboto"
+                  aria-describedby="google-font-help"
+                  aria-autocomplete="list"
+                  aria-controls="googleFontSuggestions"
+                  role="combobox"
+                  aria-expanded="false"
+                >
+                <button type="button" class="combobox-clear" id="googleFontClear" aria-label="Clear font" tabindex="-1" style="display: none;">
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                    <circle cx="8" cy="8" r="7" opacity="0.15" fill="currentColor"/>
+                    <line x1="5" y1="5" x2="11" y2="11"></line>
+                    <line x1="11" y1="5" x2="5" y2="11"></line>
+                  </svg>
+                </button>
+                <button type="button" class="combobox-toggle" id="googleFontToggle" aria-label="Show font suggestions" tabindex="-1">
+                  <svg class="dropdown-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </button>
+                <ul class="combobox-menu" id="googleFontSuggestions" role="listbox" aria-label="Google Font suggestions" hidden>
+                  <!-- Populated dynamically from googleFonts.ts -->
+                </ul>
+              </div>
+              <span id="google-font-help" class="sr-only">
+                Type any Google Font name or select from popular suggestions
               </span>
+
+              <!-- Font Preview -->
+              <div class="font-preview" id="fontPreview">
+                <div class="font-preview-label">Preview:</div>
+                <div class="font-preview-text" id="fontPreviewText">
+                  AaBbCc 123 あいうえお 你好
+                </div>
+              </div>
+
+              <!-- Font Status Indicator -->
+              <div class="font-status" id="fontStatus" style="display: none; margin-top: var(--space-xs); padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-sm); font-size: var(--text-sm);">
+                <span id="fontStatusIcon" style="margin-right: var(--space-xs);"></span>
+                <span id="fontStatusText"></span>
+              </div>
             </div>
+
           </div>
 
           <div class="settings-group accordion-group">
@@ -196,15 +383,57 @@
               </div>
 
               <div class="field field-row">
-                <label for="blurFreeTextBg" class="field-label">
-                  Blur Free Text Background
-                  <span class="field-help">Apply blur effect behind free text</span>
+                <label for="includeFreeText" class="field-label">
+                  Allow Free Label Text
+                  <span class="field-help">Translate unstructured text in images</span>
                 </label>
-                <label class="toggle" aria-label="Toggle blur free text background">
-                  <input type="checkbox" id="blurFreeTextBg">
+                <label class="toggle" aria-label="Toggle free label text">
+                  <input type="checkbox" id="includeFreeText" aria-describedby="free-text-help">
+                  <span class="toggle-slider" aria-hidden="true"></span>
+                </label>
+                <span id="free-text-help" class="sr-only">
+                  When enabled, processes free-form text in addition to speech bubbles
+                </span>
+              </div>
+
+              <div class="field field-row" id="bananaField" hidden>
+                <label for="bananaMode" class="field-label">
+                  Banana Mode
+                  <span class="field-help">Enhanced detection for complex layouts</span>
+                </label>
+                <label class="toggle" aria-label="Toggle banana mode">
+                  <input type="checkbox" id="bananaMode">
                   <span class="toggle-slider" aria-hidden="true"></span>
                 </label>
               </div>
+
+              <div class="field" id="backgroundTypeField" hidden>
+                <label class="field-label">
+                  Background Type
+                  <span class="field-help">Background removal for free label text</span>
+                </label>
+                <div class="button-group" role="group" aria-label="Background type selection">
+                  <button
+                    type="button"
+                    class="button-group-item active"
+                    id="blurBgBtn"
+                    data-value="blur"
+                    aria-pressed="true"
+                  >
+                    <span>Blur</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="button-group-item"
+                    id="whiteBgBtn"
+                    data-value="white"
+                    aria-pressed="false"
+                  >
+                    <span>White</span>
+                  </button>
+                </div>
+              </div>
+
             </div>
           </div>
 
@@ -216,16 +445,6 @@
               </svg>
             </button>
             <div id="accordion-advanced" class="accordion-content">
-              <div class="field field-row">
-                <label for="bananaMode" class="field-label">
-                  Banana Mode
-                  <span class="field-help">Enhanced detection for complex layouts</span>
-                </label>
-                <label class="toggle" aria-label="Toggle banana mode">
-                  <input type="checkbox" id="bananaMode">
-                  <span class="toggle-slider" aria-hidden="true"></span>
-                </label>
-              </div>
 
               <div class="field field-row">
                 <label for="cache" class="field-label">
@@ -267,6 +486,17 @@
                 </label>
                 <label class="toggle" aria-label="Toggle tighter bounds">
                   <input type="checkbox" id="tighterBounds">
+                  <span class="toggle-slider" aria-hidden="true"></span>
+                </label>
+              </div>
+
+              <div class="field field-row">
+                <label for="filterOrphanRegions" class="field-label">
+                  Filter Orphan Regions
+                  <span class="field-help">Discard text regions not within speech bubbles</span>
+                </label>
+                <label class="toggle" aria-label="Toggle filter orphan regions">
+                  <input type="checkbox" id="filterOrphanRegions">
                   <span class="toggle-slider" aria-hidden="true"></span>
                 </label>
               </div>
@@ -386,6 +616,86 @@
                 </div>
                 <span id="session-limit-help" class="sr-only">
                   Controls memory usage. Sessions allocated dynamically on demand.
+                </span>
+              </div>
+
+              <div class="field" id="targetSizeField">
+                <label for="targetSize" class="field-label">
+                  Detection Target Size
+                  <span class="field-help">Model input resolution for detection</span>
+                </label>
+                <div class="custom-dropdown" id="targetSizeDropdown">
+                  <button type="button" class="dropdown-trigger" id="targetSize" aria-haspopup="listbox" aria-expanded="false" aria-describedby="target-size-help">
+                    <span class="dropdown-selected">640px (Default)</span>
+                    <svg class="dropdown-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </button>
+                  <ul class="dropdown-menu" role="listbox" aria-label="Target size options">
+                    <li class="dropdown-item" role="option" data-value="0" aria-selected="false">
+                      <span class="dropdown-item-text">Original Source</span>
+                      <svg class="dropdown-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </li>
+                    <li class="dropdown-item" role="option" data-value="320" aria-selected="false">
+                      <span class="dropdown-item-text">320px</span>
+                      <svg class="dropdown-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </li>
+                    <li class="dropdown-item" role="option" data-value="480" aria-selected="false">
+                      <span class="dropdown-item-text">480px</span>
+                      <svg class="dropdown-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </li>
+                    <li class="dropdown-item selected" role="option" data-value="640" aria-selected="true">
+                      <span class="dropdown-item-text">640px (Default)</span>
+                      <svg class="dropdown-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </li>
+                    <li class="dropdown-item" role="option" data-value="896" aria-selected="false">
+                      <span class="dropdown-item-text">896px</span>
+                      <svg class="dropdown-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </li>
+                    <li class="dropdown-item" role="option" data-value="1024" aria-selected="false">
+                      <span class="dropdown-item-text">1024px</span>
+                      <svg class="dropdown-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </li>
+                    <li class="dropdown-item" role="option" data-value="1280" aria-selected="false">
+                      <span class="dropdown-item-text">1280px</span>
+                      <svg class="dropdown-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </li>
+                    <li class="dropdown-item" role="option" data-value="1536" aria-selected="false">
+                      <span class="dropdown-item-text">1536px</span>
+                      <svg class="dropdown-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </li>
+                    <li class="dropdown-item" role="option" data-value="1920" aria-selected="false">
+                      <span class="dropdown-item-text">1920px</span>
+                      <svg class="dropdown-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </li>
+                    <li class="dropdown-item" role="option" data-value="2048" aria-selected="false">
+                      <span class="dropdown-item-text">2048px (Maximum)</span>
+                      <svg class="dropdown-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </li>
+                  </ul>
+                </div>
+                <span id="target-size-help" class="sr-only">
+                  Higher values = better accuracy but slower. Original source uses full image resolution.
                 </span>
               </div>
             </div>

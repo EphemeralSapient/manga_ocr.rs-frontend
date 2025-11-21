@@ -33,21 +33,47 @@ const el = {
   panelApiKeys: document.getElementById('panel-apiKeys')!,
   panelStats: document.getElementById('panel-stats')!,
 
-  // Settings - Custom Dropdown
-  modelDropdown: document.getElementById('modelDropdown')!,
-  translateModel: document.getElementById('translateModel') as HTMLButtonElement,
+  // Settings - Model Buttons
+  flashBtn: document.getElementById('flashBtn') as HTMLButtonElement,
+  liteBtn: document.getElementById('liteBtn') as HTMLButtonElement,
+  proBtn: document.getElementById('proBtn') as HTMLButtonElement,
+  languageInput: document.getElementById('targetLanguage') as HTMLInputElement,
+  languageClear: document.getElementById('languageClear') as HTMLButtonElement,
+  languageToggle: document.getElementById('languageToggle') as HTMLButtonElement,
+  languageSuggestions: document.getElementById('languageSuggestions') as HTMLUListElement,
+  builtinChip: document.getElementById('builtinChip') as HTMLButtonElement,
+  googleChip: document.getElementById('googleChip') as HTMLButtonElement,
+  builtinFontField: document.getElementById('builtinFontField')!,
+  googleFontField: document.getElementById('googleFontField')!,
+  fontDropdown: document.getElementById('fontDropdown')!,
+  fontFamily: document.getElementById('fontFamily') as HTMLButtonElement,
+  googleFontInput: document.getElementById('googleFontFamily') as HTMLInputElement,
+  googleFontClear: document.getElementById('googleFontClear') as HTMLButtonElement,
+  googleFontToggle: document.getElementById('googleFontToggle') as HTMLButtonElement,
+  googleFontSuggestions: document.getElementById('googleFontSuggestions') as HTMLUListElement,
+  fontPreviewText: document.getElementById('fontPreviewText') as HTMLDivElement,
+  builtinFontPreviewText: document.getElementById('builtinFontPreviewText') as HTMLDivElement,
+  fontStatus: document.getElementById('fontStatus') as HTMLDivElement,
+  fontStatusIcon: document.getElementById('fontStatusIcon') as HTMLSpanElement,
+  fontStatusText: document.getElementById('fontStatusText') as HTMLSpanElement,
   includeFreeText: document.getElementById('includeFreeText') as HTMLInputElement,
-  textStroke: document.getElementById('textStroke') as HTMLInputElement,
-  blurFreeTextBg: document.getElementById('blurFreeTextBg') as HTMLInputElement,
   bananaMode: document.getElementById('bananaMode') as HTMLInputElement,
+  bananaField: document.getElementById('bananaField')!,
+  blurBgBtn: document.getElementById('blurBgBtn') as HTMLButtonElement,
+  whiteBgBtn: document.getElementById('whiteBgBtn') as HTMLButtonElement,
+  backgroundTypeField: document.getElementById('backgroundTypeField')!,
+  textStroke: document.getElementById('textStroke') as HTMLInputElement,
   cache: document.getElementById('cache') as HTMLInputElement,
   metricsDetail: document.getElementById('metricsDetail') as HTMLInputElement,
   geminiThinking: document.getElementById('geminiThinking') as HTMLInputElement,
   tighterBounds: document.getElementById('tighterBounds') as HTMLInputElement,
+  filterOrphanRegions: document.getElementById('filterOrphanRegions') as HTMLInputElement,
   useMask: document.getElementById('useMask') as HTMLInputElement,
   mergeImg: document.getElementById('mergeImg') as HTMLInputElement,
   batchSize: document.getElementById('batchSize') as HTMLInputElement,
   sessionLimit: document.getElementById('sessionLimit') as HTMLInputElement,
+  targetSize: document.getElementById('targetSize') as HTMLButtonElement,
+  targetSizeDropdown: document.getElementById('targetSizeDropdown')!,
 
   // Backend Info
   backendInfo: document.getElementById('backendInfo')!,
@@ -73,8 +99,14 @@ const el = {
   progressFill: document.getElementById('progressFill')!,
 };
 
-// Current dropdown value
+// Current dropdown values
 let currentTranslateModel = 'gemini-flash-latest';
+let currentTargetLanguage = 'English';
+let currentFontSource = 'builtin';
+let currentFontFamily = 'arial';
+let currentGoogleFontFamily = 'Roboto';
+let currentBackgroundType = 'blur';
+let currentTargetSize = 640;
 
 // ===== Initialization =====
 document.addEventListener('DOMContentLoaded', async () => {
@@ -113,21 +145,49 @@ async function loadAndApplySettings(): Promise<void> {
       el.serverUrl.value = serverUrl;
     }
 
-    // Set custom dropdown value
+    // Set model selection
     currentTranslateModel = settings.translateModel;
-    setDropdownValue(settings.translateModel);
+    updateModelSelection(currentTranslateModel);
+
+    currentTargetLanguage = settings.targetLanguage || 'English';
+    el.languageInput.value = currentTargetLanguage;
+
+    currentFontSource = settings.fontSource || 'builtin';
+    updateChipSelection(currentFontSource);
+
+    currentFontFamily = settings.fontFamily || 'arial';
+    setDropdownValue(el.fontDropdown, currentFontFamily, (value) => { currentFontFamily = value; });
+
+    currentGoogleFontFamily = settings.googleFontFamily || 'Roboto';
+    el.googleFontInput.value = currentGoogleFontFamily;
+
+    updateFontFieldVisibility();
+
+    // Load and preview the saved Google Font
+    if (currentFontSource === 'google') {
+      loadGoogleFontPreview(currentGoogleFontFamily);
+    }
+
+    currentBackgroundType = settings.backgroundType || 'blur';
+    updateBackgroundTypeSelection(currentBackgroundType);
+
     el.includeFreeText.checked = settings.includeFreeText;
     el.textStroke.checked = settings.textStroke;
-    el.blurFreeTextBg.checked = settings.blurFreeTextBg;
     el.bananaMode.checked = settings.bananaMode;
+
+    updateFreeTextFieldsVisibility();
     el.cache.checked = settings.cache;
     el.metricsDetail.checked = settings.metricsDetail;
     el.geminiThinking.checked = settings.geminiThinking ?? false;
     el.tighterBounds.checked = settings.tighterBounds ?? true;
+    el.filterOrphanRegions.checked = settings.filterOrphanRegions ?? false;
     el.useMask.checked = settings.useMask ?? true;
     el.mergeImg.checked = settings.mergeImg ?? false;
     el.batchSize.value = String(settings.batchSize ?? 5);
     el.sessionLimit.value = String(settings.sessionLimit ?? 8);
+
+    currentTargetSize = settings.targetSize ?? 640;
+    setDropdownValue(el.targetSizeDropdown, String(currentTargetSize), (value) => { currentTargetSize = parseInt(value); });
 
     // Load API keys
     if (settings.apiKeys && settings.apiKeys.length > 0) {
@@ -154,18 +214,24 @@ async function saveCurrentSettings(): Promise<void> {
       serverUrl: el.serverUrl.value,
       apiKeys,
       translateModel: currentTranslateModel,
+      targetLanguage: currentTargetLanguage,
+      fontSource: currentFontSource,
+      fontFamily: currentFontFamily,
+      googleFontFamily: currentGoogleFontFamily,
       includeFreeText: el.includeFreeText.checked,
       textStroke: el.textStroke.checked,
-      blurFreeTextBg: el.blurFreeTextBg.checked,
+      backgroundType: currentBackgroundType,
       bananaMode: el.bananaMode.checked,
       cache: el.cache.checked,
       metricsDetail: el.metricsDetail.checked,
       geminiThinking: el.geminiThinking.checked,
       tighterBounds: el.tighterBounds.checked,
+      filterOrphanRegions: el.filterOrphanRegions.checked,
       useMask: el.useMask.checked,
       mergeImg: el.mergeImg.checked,
       batchSize: Math.max(1, Math.min(50, parseInt(el.batchSize.value) || 5)),
       sessionLimit: Math.max(1, Math.min(32, parseInt(el.sessionLimit.value) || 8)),
+      targetSize: currentTargetSize,
     };
 
     await saveSettings(settings);
@@ -525,6 +591,8 @@ function updateStatisticsPanel(): void {
 
   // Current Session Stats (if available)
   if (currentAnalytics) {
+    const hasLabelCounts = currentAnalytics.label_0_count || currentAnalytics.label_1_count || currentAnalytics.label_2_count;
+
     html += `
     <div class="settings-group" style="border-left: 3px solid var(--primary);">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm);">
@@ -545,6 +613,28 @@ function updateStatisticsPanel(): void {
           </div>
         </div>
       </div>
+      ${hasLabelCounts ? `
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-sm); margin-top: var(--space-md);">
+        <div style="padding: var(--space-xs); text-align: center; background: var(--bg-secondary); border-radius: var(--radius-sm);">
+          <div style="font-size: var(--text-xs); color: var(--text-secondary);">Bubbles (L0)</div>
+          <div style="font-size: var(--text-lg); font-weight: var(--font-semibold); color: var(--text-primary);">
+            ${currentAnalytics.label_0_count || 0}
+          </div>
+        </div>
+        <div style="padding: var(--space-xs); text-align: center; background: var(--bg-secondary); border-radius: var(--radius-sm);">
+          <div style="font-size: var(--text-xs); color: var(--text-secondary);">Inner (L1)</div>
+          <div style="font-size: var(--text-lg); font-weight: var(--font-semibold); color: var(--text-primary);">
+            ${currentAnalytics.label_1_count || 0}
+          </div>
+        </div>
+        <div style="padding: var(--space-xs); text-align: center; background: var(--bg-secondary); border-radius: var(--radius-sm);">
+          <div style="font-size: var(--text-xs); color: var(--text-secondary);">Free (L2)</div>
+          <div style="font-size: var(--text-lg); font-weight: var(--font-semibold); color: var(--text-primary);">
+            ${currentAnalytics.label_2_count || 0}
+          </div>
+        </div>
+      </div>
+      ` : ''}
       ${createStatRow('Processing Time', formatTime(currentAnalytics.total_time_ms), true)}
       ${(currentAnalytics.input_tokens || currentAnalytics.output_tokens) ?
         createStatRow('Tokens Used', ((currentAnalytics.input_tokens || 0) + (currentAnalytics.output_tokens || 0)).toLocaleString(), true) : ''}
@@ -559,6 +649,7 @@ function updateStatisticsPanel(): void {
     const totalTokens = cumulativeStats.totalInputTokens + cumulativeStats.totalOutputTokens;
     const cacheTotal = cumulativeStats.totalCacheHits + cumulativeStats.totalCacheMisses;
     const hitRate = cacheTotal > 0 ? ((cumulativeStats.totalCacheHits / cacheTotal) * 100).toFixed(1) + '%' : 'N/A';
+    const hasLabelCounts = cumulativeStats.totalLabel0 || cumulativeStats.totalLabel1 || cumulativeStats.totalLabel2;
 
     html += `
     <div class="settings-group">
@@ -594,6 +685,31 @@ function updateStatisticsPanel(): void {
           </div>
         </div>
       </div>
+
+      ${hasLabelCounts ? `
+      <h3 class="settings-group-title" style="margin-bottom: var(--space-sm);">Label Breakdown</h3>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-sm); margin-bottom: var(--space-md);">
+        <div style="padding: var(--space-xs); text-align: center; background: var(--bg-secondary); border-radius: var(--radius-sm);">
+          <div style="font-size: var(--text-xs); color: var(--text-secondary);">Bubbles (L0)</div>
+          <div style="font-size: var(--text-lg); font-weight: var(--font-semibold); color: var(--text-primary);">
+            ${(cumulativeStats.totalLabel0 || 0).toLocaleString()}
+          </div>
+        </div>
+        <div style="padding: var(--space-xs); text-align: center; background: var(--bg-secondary); border-radius: var(--radius-sm);">
+          <div style="font-size: var(--text-xs); color: var(--text-secondary);">Inner (L1)</div>
+          <div style="font-size: var(--text-lg); font-weight: var(--font-semibold); color: var(--text-primary);">
+            ${(cumulativeStats.totalLabel1 || 0).toLocaleString()}
+          </div>
+        </div>
+        <div style="padding: var(--space-xs); text-align: center; background: var(--bg-secondary); border-radius: var(--radius-sm);">
+          <div style="font-size: var(--text-xs); color: var(--text-secondary);">Free (L2)</div>
+          <div style="font-size: var(--text-lg); font-weight: var(--font-semibold); color: var(--text-primary);">
+            ${(cumulativeStats.totalLabel2 || 0).toLocaleString()}
+          </div>
+        </div>
+      </div>
+      ` : ''}
+
 
       <h3 class="settings-group-title" style="margin-top: var(--space-lg); margin-bottom: var(--space-md);">Averages</h3>
       ${createStatRow('Avg. Images/Session', avgImagesPerSession.toFixed(1))}
@@ -675,10 +791,15 @@ function setupEventListeners(): void {
   });
 
   // Settings
-  el.includeFreeText.addEventListener('change', saveCurrentSettings);
+  el.includeFreeText.addEventListener('change', () => {
+    updateFreeTextFieldsVisibility();
+    saveCurrentSettings();
+  });
   el.textStroke.addEventListener('change', saveCurrentSettings);
-  el.blurFreeTextBg.addEventListener('change', saveCurrentSettings);
-  el.bananaMode.addEventListener('change', saveCurrentSettings);
+  el.bananaMode.addEventListener('change', () => {
+    updateFreeTextFieldsVisibility();
+    saveCurrentSettings();
+  });
   el.cache.addEventListener('change', saveCurrentSettings);
   el.metricsDetail.addEventListener('change', saveCurrentSettings);
   el.geminiThinking.addEventListener('change', saveCurrentSettings);
@@ -943,9 +1064,412 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
 // ===== Custom Dropdown =====
 function setupCustomDropdown(): void {
-  const trigger = el.translateModel;
-  const dropdown = el.modelDropdown;
+  // Setup model buttons
+  setupModelButtons();
+
+  // Setup language combobox
+  setupCombobox();
+
+  // Setup font source chips
+  setupFontSourceChips();
+
+  // Setup background type buttons
+  setupBackgroundTypeButtons();
+
+  // Setup built-in font dropdown
+  setupDropdown(el.fontDropdown, el.fontFamily, (value) => {
+    currentFontFamily = value;
+    loadBuiltinFontPreview(value);
+    saveCurrentSettings();
+  });
+
+  // Setup target size dropdown
+  setupDropdown(el.targetSizeDropdown, el.targetSize, (value) => {
+    currentTargetSize = parseInt(value);
+    saveCurrentSettings();
+  });
+
+  // Setup Google Fonts combobox
+  setupGoogleFontsCombobox();
+}
+
+function setupFontSourceChips(): void {
+  el.builtinChip.addEventListener('click', () => {
+    if (currentFontSource !== 'builtin') {
+      currentFontSource = 'builtin';
+      updateChipSelection('builtin');
+      updateFontFieldVisibility();
+      saveCurrentSettings();
+    }
+  });
+
+  el.googleChip.addEventListener('click', () => {
+    if (currentFontSource !== 'google') {
+      currentFontSource = 'google';
+      updateChipSelection('google');
+      updateFontFieldVisibility();
+      saveCurrentSettings();
+    }
+  });
+}
+
+function updateChipSelection(source: string): void {
+  if (source === 'google') {
+    el.builtinChip.classList.remove('active');
+    el.builtinChip.setAttribute('aria-pressed', 'false');
+    el.googleChip.classList.add('active');
+    el.googleChip.setAttribute('aria-pressed', 'true');
+  } else {
+    el.builtinChip.classList.add('active');
+    el.builtinChip.setAttribute('aria-pressed', 'true');
+    el.googleChip.classList.remove('active');
+    el.googleChip.setAttribute('aria-pressed', 'false');
+  }
+}
+
+function setupBackgroundTypeButtons(): void {
+  el.blurBgBtn.addEventListener('click', () => {
+    if (currentBackgroundType !== 'blur') {
+      currentBackgroundType = 'blur';
+      updateBackgroundTypeSelection('blur');
+      saveCurrentSettings();
+    }
+  });
+
+  el.whiteBgBtn.addEventListener('click', () => {
+    if (currentBackgroundType !== 'white') {
+      currentBackgroundType = 'white';
+      updateBackgroundTypeSelection('white');
+      saveCurrentSettings();
+    }
+  });
+}
+
+function updateBackgroundTypeSelection(type: string): void {
+  if (type === 'white') {
+    el.blurBgBtn.classList.remove('active');
+    el.blurBgBtn.setAttribute('aria-pressed', 'false');
+    el.whiteBgBtn.classList.add('active');
+    el.whiteBgBtn.setAttribute('aria-pressed', 'true');
+  } else {
+    el.blurBgBtn.classList.add('active');
+    el.blurBgBtn.setAttribute('aria-pressed', 'true');
+    el.whiteBgBtn.classList.remove('active');
+    el.whiteBgBtn.setAttribute('aria-pressed', 'false');
+  }
+}
+
+function setupModelButtons(): void {
+  el.flashBtn.addEventListener('click', () => {
+    if (currentTranslateModel !== 'gemini-flash-latest') {
+      currentTranslateModel = 'gemini-flash-latest';
+      updateModelSelection('gemini-flash-latest');
+      saveCurrentSettings();
+    }
+  });
+
+  el.liteBtn.addEventListener('click', () => {
+    if (currentTranslateModel !== 'gemini-flash-lite-latest') {
+      currentTranslateModel = 'gemini-flash-lite-latest';
+      updateModelSelection('gemini-flash-lite-latest');
+      saveCurrentSettings();
+    }
+  });
+
+  el.proBtn.addEventListener('click', () => {
+    if (currentTranslateModel !== 'gemini-pro-latest') {
+      currentTranslateModel = 'gemini-pro-latest';
+      updateModelSelection('gemini-pro-latest');
+      saveCurrentSettings();
+    }
+  });
+}
+
+function updateModelSelection(model: string): void {
+  // Remove active from all
+  el.flashBtn.classList.remove('active');
+  el.flashBtn.setAttribute('aria-pressed', 'false');
+  el.liteBtn.classList.remove('active');
+  el.liteBtn.setAttribute('aria-pressed', 'false');
+  el.proBtn.classList.remove('active');
+  el.proBtn.setAttribute('aria-pressed', 'false');
+
+  // Set active based on model
+  if (model === 'gemini-pro-latest') {
+    el.proBtn.classList.add('active');
+    el.proBtn.setAttribute('aria-pressed', 'true');
+  } else if (model === 'gemini-flash-lite-latest') {
+    el.liteBtn.classList.add('active');
+    el.liteBtn.setAttribute('aria-pressed', 'true');
+  } else {
+    el.flashBtn.classList.add('active');
+    el.flashBtn.setAttribute('aria-pressed', 'true');
+  }
+}
+
+function updateFontFieldVisibility(): void {
+  // Use smooth transitions by toggling hidden attribute
+  if (currentFontSource === 'google') {
+    // Show Google, hide builtin
+    el.builtinFontField.hidden = true;
+    el.googleFontField.hidden = false;
+
+    // Load preview for the current Google font
+    if (currentGoogleFontFamily) {
+      loadGoogleFontPreview(currentGoogleFontFamily);
+    }
+  } else {
+    // Show builtin, hide Google
+    el.builtinFontField.hidden = false;
+    el.googleFontField.hidden = true;
+
+    // Load preview for built-in font
+    loadBuiltinFontPreview(currentFontFamily);
+  }
+}
+
+function updateFreeTextFieldsVisibility(): void {
+  const isEnabled = el.includeFreeText.checked;
+  const isBananaMode = el.bananaMode.checked;
+
+  el.bananaField.hidden = !isEnabled;
+  el.backgroundTypeField.hidden = !isEnabled || isBananaMode;
+}
+
+function setupCombobox(): void {
+  const input = el.languageInput;
+  const clear = el.languageClear;
+  const toggle = el.languageToggle;
+  const menu = el.languageSuggestions;
+  const items = menu.querySelectorAll<HTMLLIElement>('.combobox-item');
+
+  let isOpen = false;
+  let blurTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  const updateClearButton = () => {
+    if (input.value.trim()) {
+      clear.style.display = 'flex';
+      clear.classList.add('visible');
+    } else {
+      clear.classList.remove('visible');
+      // Delay hiding to allow animation
+      setTimeout(() => {
+        if (!clear.classList.contains('visible')) {
+          clear.style.display = 'none';
+        }
+      }, 150);
+    }
+  };
+
+  const openMenu = () => {
+    // Clear any pending blur timeout
+    if (blurTimeout) {
+      clearTimeout(blurTimeout);
+      blurTimeout = null;
+    }
+    isOpen = true;
+    input.setAttribute('aria-expanded', 'true');
+    menu.hidden = false;
+    filterSuggestions(input.value);
+  };
+
+  const closeMenu = () => {
+    isOpen = false;
+    input.setAttribute('aria-expanded', 'false');
+    menu.hidden = true;
+  };
+
+  const filterSuggestions = (query: string) => {
+    const lowerQuery = query.toLowerCase().trim();
+    let hasVisibleItems = false;
+
+    items.forEach((item) => {
+      const value = item.dataset.value || '';
+      const matches = value.toLowerCase().includes(lowerQuery);
+      item.hidden = !matches;
+      if (matches) hasVisibleItems = true;
+    });
+
+    // If no matches, show all suggestions
+    if (!hasVisibleItems && lowerQuery === '') {
+      items.forEach(item => item.hidden = false);
+    }
+  };
+
+  const selectSuggestion = (value: string) => {
+    input.value = value;
+    currentTargetLanguage = value;
+    closeMenu();
+    saveCurrentSettings();
+  };
+
+  // Clear button - use mousedown to prevent blur from closing menu
+  clear.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    input.value = '';
+    currentTargetLanguage = '';
+    updateClearButton();
+    saveCurrentSettings();
+    // Delay opening to ensure blur doesn't interfere
+    setTimeout(() => {
+      openMenu();
+      input.focus();
+    }, 10);
+  });
+
+  // Input events
+  input.addEventListener('input', () => {
+    currentTargetLanguage = input.value;
+    updateClearButton();
+    if (isOpen) {
+      filterSuggestions(input.value);
+    }
+    saveCurrentSettings();
+  });
+
+  // Initialize clear button visibility
+  updateClearButton();
+
+  input.addEventListener('focus', () => {
+    openMenu();
+  });
+
+  input.addEventListener('blur', () => {
+    // Delay to allow click on suggestion
+    blurTimeout = setTimeout(() => {
+      closeMenu();
+      blurTimeout = null;
+    }, 150);
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeMenu();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!isOpen) {
+        openMenu();
+      } else {
+        const visibleItems = Array.from(items).filter(item => !item.hidden);
+        if (visibleItems.length > 0) {
+          visibleItems[0].focus();
+        }
+      }
+    }
+  });
+
+  // Toggle button
+  toggle.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (isOpen) {
+      closeMenu();
+    } else {
+      openMenu();
+      input.focus();
+    }
+  });
+
+  // Suggestion items
+  items.forEach((item) => {
+    item.addEventListener('mousedown', (e) => {
+      // Use mousedown instead of click to fire before blur
+      e.preventDefault(); // Prevent blur from input
+      const value = item.dataset.value;
+      if (value) {
+        selectSuggestion(value);
+        input.blur(); // Manually blur after selection
+      }
+    });
+
+    item.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        const value = item.dataset.value;
+        if (value) {
+          selectSuggestion(value);
+          input.focus();
+        }
+      } else if (e.key === 'Escape') {
+        closeMenu();
+        input.focus();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const next = item.nextElementSibling as HTMLLIElement | null;
+        if (next && !next.hidden) {
+          next.focus();
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prev = item.previousElementSibling as HTMLLIElement | null;
+        if (prev && !prev.hidden) {
+          prev.focus();
+        } else {
+          input.focus();
+        }
+      }
+    });
+  });
+
+  // Close on outside click
+  document.addEventListener('click', (e) => {
+    if (!input.contains(e.target as Node) &&
+        !toggle.contains(e.target as Node) &&
+        !menu.contains(e.target as Node)) {
+      closeMenu();
+    }
+  });
+}
+
+function setupDropdown(
+  dropdown: HTMLElement,
+  trigger: HTMLButtonElement,
+  onSelect: (value: string) => void
+): void {
   const items = dropdown.querySelectorAll<HTMLLIElement>('.dropdown-item');
+
+  const openDropdown = () => {
+    // Check if dropdown should open upward
+    const rect = trigger.getBoundingClientRect();
+    const menuHeight = 300; // Approximate max height of dropdown menu
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+
+    // If not enough space below and more space above, open upward
+    if (spaceBelow < menuHeight && spaceAbove > spaceBelow) {
+      dropdown.classList.add('open-upward');
+    } else {
+      dropdown.classList.remove('open-upward');
+    }
+
+    dropdown.classList.add('open');
+    trigger.setAttribute('aria-expanded', 'true');
+  };
+
+  const closeDropdown = () => {
+    dropdown.classList.remove('open');
+    trigger.setAttribute('aria-expanded', 'false');
+  };
+
+  const getCurrentItemIndex = (): number => {
+    const itemsArray = Array.from(items);
+    return itemsArray.findIndex(item => item.classList.contains('selected'));
+  };
+
+  const selectItem = (value: string) => {
+    const selectedText = dropdown.querySelector('.dropdown-selected')!;
+
+    items.forEach((item) => {
+      const isSelected = item.dataset.value === value;
+      item.classList.toggle('selected', isSelected);
+      item.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+
+      if (isSelected) {
+        const text = item.querySelector('.dropdown-item-text')?.textContent || '';
+        selectedText.textContent = text;
+        onSelect(value);
+      }
+    });
+  };
 
   // Toggle dropdown on trigger click
   trigger.addEventListener('click', (e) => {
@@ -964,9 +1488,8 @@ function setupCustomDropdown(): void {
     item.addEventListener('click', () => {
       const value = item.dataset.value;
       if (value) {
-        selectDropdownItem(value);
+        selectItem(value);
         closeDropdown();
-        saveCurrentSettings();
       }
     });
   });
@@ -993,33 +1516,21 @@ function setupCustomDropdown(): void {
       e.preventDefault();
       const currentIndex = getCurrentItemIndex();
       const nextIndex = Math.min(currentIndex + 1, items.length - 1);
-      selectDropdownItem(items[nextIndex].dataset.value!);
+      selectItem(items[nextIndex].dataset.value!);
     } else if (e.key === 'ArrowUp' && dropdown.classList.contains('open')) {
       e.preventDefault();
       const currentIndex = getCurrentItemIndex();
       const prevIndex = Math.max(currentIndex - 1, 0);
-      selectDropdownItem(items[prevIndex].dataset.value!);
+      selectItem(items[prevIndex].dataset.value!);
     }
   });
-
-  function getCurrentItemIndex(): number {
-    const itemsArray = Array.from(items);
-    return itemsArray.findIndex(item => item.classList.contains('selected'));
-  }
 }
 
-function openDropdown(): void {
-  el.modelDropdown.classList.add('open');
-  el.translateModel.setAttribute('aria-expanded', 'true');
-}
-
-function closeDropdown(): void {
-  el.modelDropdown.classList.remove('open');
-  el.translateModel.setAttribute('aria-expanded', 'false');
-}
-
-function selectDropdownItem(value: string): void {
-  const dropdown = el.modelDropdown;
+function setDropdownValue(
+  dropdown: HTMLElement,
+  value: string,
+  onSelect: (value: string) => void
+): void {
   const items = dropdown.querySelectorAll<HTMLLIElement>('.dropdown-item');
   const selectedText = dropdown.querySelector('.dropdown-selected')!;
 
@@ -1031,13 +1542,387 @@ function selectDropdownItem(value: string): void {
     if (isSelected) {
       const text = item.querySelector('.dropdown-item-text')?.textContent || '';
       selectedText.textContent = text;
-      currentTranslateModel = value;
+      onSelect(value);
     }
   });
 }
 
-function setDropdownValue(value: string): void {
-  selectDropdownItem(value);
+// Google Fonts API cache
+let allGoogleFonts: string[] | null = null;
+let googleFontsLoading = false;
+
+async function fetchAllGoogleFonts(): Promise<string[]> {
+  if (allGoogleFonts) {
+    console.log(`[Google Fonts] Using cached ${allGoogleFonts.length} fonts`);
+    return allGoogleFonts;
+  }
+  if (googleFontsLoading) {
+    console.log('[Google Fonts] Already loading, waiting...');
+    // Wait for existing fetch
+    while (googleFontsLoading) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    return allGoogleFonts || [];
+  }
+
+  googleFontsLoading = true;
+  console.log('[Google Fonts] Starting fetch from API...');
+
+  try {
+    // Try public API endpoint without key first
+    console.log('[Google Fonts] Attempting: https://www.googleapis.com/webfonts/v1/webfonts?sort=popularity');
+    const response = await fetch('https://www.googleapis.com/webfonts/v1/webfonts?sort=popularity');
+
+    console.log(`[Google Fonts] Response status: ${response.status}`);
+
+    if (!response.ok) {
+      throw new Error(`API returned ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('[Google Fonts] API response received:', data);
+
+    const fonts = data.items?.map((font: any) => font.family) || [];
+    allGoogleFonts = fonts;
+    console.log(`[Google Fonts] ✓ Successfully loaded ${fonts.length} fonts from API`);
+    return fonts;
+  } catch (error) {
+    console.error('[Google Fonts] API fetch failed:', error);
+    console.log('[Google Fonts] Falling back to popular fonts list...');
+
+    // Fallback to popular fonts
+    const { POPULAR_GOOGLE_FONTS } = await import('./data/googleFonts.js');
+    allGoogleFonts = [...POPULAR_GOOGLE_FONTS];
+    console.log(`[Google Fonts] ✓ Using ${allGoogleFonts.length} popular fonts as fallback`);
+    return allGoogleFonts;
+  } finally {
+    googleFontsLoading = false;
+  }
+}
+
+function setupGoogleFontsCombobox(): void {
+  const input = el.googleFontInput;
+  const clear = el.googleFontClear;
+  const toggle = el.googleFontToggle;
+  const menu = el.googleFontSuggestions;
+
+  const updateClearButton = () => {
+    if (input.value.trim()) {
+      clear.style.display = 'flex';
+      clear.classList.add('visible');
+    } else {
+      clear.classList.remove('visible');
+      setTimeout(() => {
+        if (!clear.classList.contains('visible')) {
+          clear.style.display = 'none';
+        }
+      }, 150);
+    }
+  };
+
+  let isOpen = false;
+  let blurTimeout: ReturnType<typeof setTimeout> | null = null;
+  let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  const renderSuggestions = (fonts: string[], query: string = '') => {
+    const lowerQuery = query.toLowerCase().trim();
+    let matchedFonts = fonts;
+
+    if (lowerQuery) {
+      matchedFonts = fonts.filter(font =>
+        font.toLowerCase().includes(lowerQuery)
+      );
+      console.log(`[Google Fonts Search] Found ${matchedFonts.length} matches for "${query}"`);
+    } else {
+      console.log(`[Google Fonts Search] Showing all ${fonts.length} fonts`);
+    }
+
+    // Limit to 50 suggestions for performance
+    const displayFonts = matchedFonts.slice(0, 50);
+    console.log(`[Google Fonts Search] Displaying ${displayFonts.length} fonts`);
+
+    if (displayFonts.length === 0) {
+      menu.innerHTML = '<li class="combobox-item combobox-no-results" style="color: var(--text-tertiary); font-style: italic; cursor: default;">No fonts found</li>';
+    } else {
+      menu.innerHTML = displayFonts.map(font =>
+        `<li class="combobox-item" role="option" data-value="${font}">${font}</li>`
+      ).join('');
+
+      // Re-attach click handlers
+      menu.querySelectorAll<HTMLLIElement>('.combobox-item').forEach((item) => {
+        if (!item.classList.contains('combobox-no-results')) {
+          item.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            const value = item.dataset.value;
+            if (value) {
+              selectSuggestion(value);
+              input.blur();
+            }
+          });
+        }
+      });
+    }
+  };
+
+  const searchFonts = async (query: string) => {
+    console.log(`[Google Fonts Search] Query: "${query}"`);
+
+    // Debounce search
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+
+    searchTimeout = setTimeout(async () => {
+      console.log(`[Google Fonts Search] Executing search for: "${query}"`);
+      const fonts = await fetchAllGoogleFonts();
+      console.log(`[Google Fonts Search] Filtering ${fonts.length} fonts...`);
+      renderSuggestions(fonts, query);
+    }, 150);
+  };
+
+  const openMenu = async () => {
+    console.log('[Google Fonts] Opening menu...');
+
+    if (blurTimeout) {
+      clearTimeout(blurTimeout);
+      blurTimeout = null;
+    }
+    isOpen = true;
+    input.setAttribute('aria-expanded', 'true');
+    menu.hidden = false;
+
+    // Show loading state
+    menu.innerHTML = '<li class="combobox-item combobox-loading" style="color: var(--text-tertiary); font-style: italic; cursor: default;">Loading fonts...</li>';
+
+    // Load and display fonts
+    const fonts = await fetchAllGoogleFonts();
+    console.log('[Google Fonts] Menu opened with fonts loaded');
+    renderSuggestions(fonts, input.value);
+  };
+
+  const closeMenu = () => {
+    isOpen = false;
+    input.setAttribute('aria-expanded', 'false');
+    menu.hidden = true;
+  };
+
+  const selectSuggestion = (value: string) => {
+    input.value = value;
+    currentGoogleFontFamily = value;
+    closeMenu();
+    loadGoogleFontPreview(value);
+    saveCurrentSettings();
+  };
+
+    // Clear button - use mousedown to prevent blur from closing menu
+    clear.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      input.value = '';
+      currentGoogleFontFamily = '';
+      updateClearButton();
+      saveCurrentSettings();
+      // Delay opening to ensure blur doesn't interfere
+      setTimeout(() => {
+        openMenu();
+        input.focus();
+      }, 10);
+    });
+
+  // Input events
+  input.addEventListener('input', () => {
+    currentGoogleFontFamily = input.value;
+    updateClearButton();
+    if (isOpen) {
+      searchFonts(input.value);
+    }
+    saveCurrentSettings();
+  });
+
+    // Initialize clear button visibility
+    updateClearButton();
+
+    input.addEventListener('change', () => {
+      const fontName = input.value.trim();
+      // Only load preview if font name is valid (at least 2 characters)
+      if (fontName.length >= 2) {
+        loadGoogleFontPreview(fontName);
+      }
+    });
+
+    input.addEventListener('focus', () => {
+      openMenu();
+    });
+
+    input.addEventListener('blur', () => {
+      // Longer delay to allow click events to register
+      blurTimeout = setTimeout(() => {
+        closeMenu();
+        blurTimeout = null;
+      }, 250);
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeMenu();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (!isOpen) {
+          openMenu();
+        } else {
+          const visibleItems = menu.querySelectorAll<HTMLLIElement>('.combobox-item:not(.combobox-no-results):not(.combobox-loading)');
+          if (visibleItems.length > 0) {
+            visibleItems[0].focus();
+          }
+        }
+      }
+    });
+
+    // Toggle button
+    toggle.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (isOpen) {
+        closeMenu();
+      } else {
+        openMenu();
+        input.focus();
+      }
+    });
+
+  // Note: Event handlers for suggestions are now attached in renderSuggestions()
+
+  // Close on outside click
+  document.addEventListener('click', (e) => {
+    if (!input.contains(e.target as Node) &&
+        !toggle.contains(e.target as Node) &&
+        !menu.contains(e.target as Node)) {
+      closeMenu();
+    }
+  });
+
+  // Initialize clear button visibility
+  updateClearButton();
+}
+
+// Show font status indicator
+function showFontStatus(status: 'loading' | 'success' | 'error', message: string): void {
+  if (!el.fontStatus) return;
+
+  el.fontStatus.style.display = 'flex';
+  el.fontStatus.style.alignItems = 'center';
+
+  if (status === 'loading') {
+    el.fontStatus.style.background = 'var(--bg-secondary)';
+    el.fontStatus.style.color = 'var(--text-secondary)';
+    el.fontStatusIcon.textContent = '⏳';
+    el.fontStatusText.textContent = message;
+  } else if (status === 'success') {
+    el.fontStatus.style.background = 'rgba(16, 185, 129, 0.1)';
+    el.fontStatus.style.color = 'rgb(16, 185, 129)';
+    el.fontStatusIcon.textContent = '✓';
+    el.fontStatusText.textContent = message;
+  } else if (status === 'error') {
+    el.fontStatus.style.background = 'rgba(239, 68, 68, 0.1)';
+    el.fontStatus.style.color = 'rgb(239, 68, 68)';
+    el.fontStatusIcon.textContent = '✗';
+    el.fontStatusText.textContent = message;
+  }
+}
+
+// Hide font status indicator
+function hideFontStatus(): void {
+  if (el.fontStatus) {
+    el.fontStatus.style.display = 'none';
+  }
+}
+
+// Load and preview Google Font
+function loadGoogleFontPreview(fontFamily: string): void {
+  // Validate font name before loading
+  const cleanFontName = fontFamily?.trim();
+  if (!cleanFontName || cleanFontName.length < 2 || !el.fontPreviewText) {
+    console.warn('[Font Preview] Invalid font name:', fontFamily);
+    hideFontStatus();
+    return;
+  }
+
+  // Show elegant loading state
+  el.fontPreviewText.classList.add('loading');
+  el.fontPreviewText.innerHTML = `
+    <span style="opacity: 0.5;">AaBbCc 123 あいうえお 你好</span>
+    <span class="font-loading-text">Loading ${fontFamily}...</span>
+  `;
+
+  showFontStatus('loading', `Loading font "${cleanFontName}"...`);
+
+  // Create a link element to load the Google Font
+  const linkId = 'google-font-preview-link';
+  let link = document.getElementById(linkId) as HTMLLinkElement;
+
+  if (!link) {
+    link = document.createElement('link');
+    link.id = linkId;
+    link.rel = 'stylesheet';
+    document.head.appendChild(link);
+  }
+
+  // Load the font from Google Fonts API with proper encoding
+  const fontName = encodeURIComponent(cleanFontName);
+  link.href = `https://fonts.googleapis.com/css2?family=${fontName}&display=swap`;
+
+  console.log('[Font Preview] Loading font:', cleanFontName);
+
+  // Wait for font to load using FontFace API for better detection
+  if (document.fonts && document.fonts.load) {
+    document.fonts.load(`20px "${fontFamily}"`)
+      .then(() => {
+        applyFontPreview(fontFamily);
+        showFontStatus('success', `Font "${cleanFontName}" loaded successfully`);
+        console.log('[Font Preview] Font loaded successfully:', cleanFontName);
+      })
+      .catch((error) => {
+        console.warn('[Font Preview] Font load error:', error);
+        // Fallback: still apply but show warning
+        setTimeout(() => {
+          applyFontPreview(fontFamily);
+          showFontStatus('error', `Font "${cleanFontName}" may not exist or failed to load`);
+        }, 600);
+      });
+  } else {
+    // Fallback for browsers without FontFace API
+    setTimeout(() => {
+      applyFontPreview(fontFamily);
+      showFontStatus('success', `Font "${cleanFontName}" applied (verification unavailable)`);
+    }, 600);
+  }
+}
+
+function applyFontPreview(fontFamily: string): void {
+  const cleanFontName = fontFamily?.trim();
+  if (!el.fontPreviewText || !cleanFontName) return;
+
+  el.fontPreviewText.style.fontFamily = `"${cleanFontName}", sans-serif`;
+  el.fontPreviewText.innerHTML = 'AaBbCc 123 あいうえお 你好';
+  el.fontPreviewText.classList.remove('loading');
+
+  console.log('[Font Preview] Applied font:', cleanFontName);
+}
+
+function loadBuiltinFontPreview(fontFamily: string): void {
+  if (!el.builtinFontPreviewText) return;
+
+  // Map font IDs to actual font families
+  const fontMap: Record<string, string> = {
+    'arial': 'Arial, sans-serif',
+    'comic-sans': '"Comic Sans MS", "Comic Sans", cursive',
+    'anime-ace': '"Anime Ace", sans-serif',
+    'anime-ace-3': '"Anime Ace 3", sans-serif',
+    'ms-yahei': '"Microsoft YaHei", "微软雅黑", sans-serif',
+    'noto-sans-mono-cjk': '"Noto Sans Mono CJK JP", monospace',
+  };
+
+  const actualFont = fontMap[fontFamily] || 'Arial, sans-serif';
+  el.builtinFontPreviewText.style.fontFamily = actualFont;
+  el.builtinFontPreviewText.innerHTML = 'AaBbCc 123 あいうえお 你好';
 }
 
 console.log('[Popup] Script loaded');
