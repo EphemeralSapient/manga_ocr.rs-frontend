@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Manga Text Processor</title>
-  <script type="module" crossorigin src="./assets/popup-BPiBkVAB.js"></script>
-  <link rel="stylesheet" crossorigin href="./styles/popup-g0z3OvZF.css">
+  <script type="module" crossorigin src="./assets/popup-DTWUDPiO.js"></script>
+  <link rel="stylesheet" crossorigin href="./styles/popup-CJo7CYSw.css">
 </head>
 <body data-theme="dark">
   <div class="app" role="application" aria-label="Manga Text Processor">
@@ -517,15 +517,40 @@
                 <span id="backendAcceleration" style="color: var(--text-secondary);"></span>
               </div>
 
-              <div class="field field-row">
-                <label for="useMask" class="field-label">
-                  Use Mask Segmentation
-                  <span class="field-help">Precise text removal using segmentation mask</span>
+              <div class="field">
+                <label class="field-label">
+                  Mask Segmentation
+                  <span class="field-help">Text removal precision and speed</span>
                 </label>
-                <label class="toggle" aria-label="Toggle mask segmentation">
-                  <input type="checkbox" id="useMask" checked>
-                  <span class="toggle-slider" aria-hidden="true"></span>
-                </label>
+                <div class="button-group" role="group" aria-label="Mask segmentation mode selection">
+                  <button
+                    type="button"
+                    class="button-group-item"
+                    id="maskModeOff"
+                    data-value="off"
+                    aria-pressed="false"
+                  >
+                    <span>Off</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="button-group-item active"
+                    id="maskModeFast"
+                    data-value="fast"
+                    aria-pressed="true"
+                  >
+                    <span>Fast</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="button-group-item"
+                    id="maskModeAccurate"
+                    data-value="accurate"
+                    aria-pressed="false"
+                  >
+                    <span>Accurate</span>
+                  </button>
+                </div>
               </div>
 
               <div class="field field-row" id="mergeImgField">

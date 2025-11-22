@@ -21,7 +21,7 @@ const DEFAULT_SETTINGS: ExtensionSettings = {
   geminiThinking: false,
   tighterBounds: false,
   filterOrphanRegions: false,
-  useMask: true,
+  maskMode: 'fast', // 'off' | 'fast' | 'accurate'
   mergeImg: false,
   batchSize: 5,
   sessionLimit: 8, // Default: will be max(cores/2, 8) on backend

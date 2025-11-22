@@ -70,7 +70,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
   min-width: var(--popup-min-width);
   max-width: var(--popup-max-width);
-  min-height: var(--popup-min-height);
   overflow-x: hidden;
 }
 
@@ -78,12 +77,11 @@ body {
 .app {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
 }
 
 /* ===== Main Content ===== */
 .main {
-  flex: 1;
+  flex: 0 1 auto;
   padding: var(--space-lg);
   display: flex;
   flex-direction: column;
@@ -330,11 +328,11 @@ body {
 
 /* Tab Panels - Smooth Animations */
 .tab-content {
-  flex: 1;
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: visible;
+  /* Removed flex: 1 to prevent extra empty space */
 }
 
 .tab-panel {
@@ -420,6 +418,8 @@ body {
   border-radius: var(--radius-lg);
   transition: all var(--transition-base);
   position: relative;
+  /* Explicitly set overflow to visible to allow dropdowns to extend beyond card boundaries */
+  overflow: visible;
 }
 
 .settings-group::before {
@@ -462,7 +462,8 @@ body {
 /* ===== Accordion Groups ===== */
 .accordion-group {
   padding: 0;
-  overflow: hidden;
+  /* Changed from hidden to visible to prevent dropdown menus from being clipped */
+  overflow: visible;
 }
 
 .accordion-header {
@@ -529,11 +530,13 @@ body {
 .accordion-content:not([hidden]) {
   max-height: 2000px;
   opacity: 1;
+  /* Changed to visible to ensure dropdowns aren't clipped */
   overflow: visible;
   transition:
     max-height var(--transition-base) ease-in,
     opacity var(--transition-base) ease-in,
     padding var(--transition-base) ease-in,
+    /* Immediately set overflow to visible when expanding */
     overflow 0s 0s;
 }
 
@@ -545,11 +548,8 @@ body {
   position: relative;
 }
 
-.field:focus-within,
-.field:has(.custom-dropdown.open),
-.field:has(.combobox-input[aria-expanded="true"]) {
-  z-index: calc(var(--z-dropdown) + 1);
-}
+/* Note: Removed z-index from field to prevent stacking context issues.
+   The dropdown menu itself has a high enough z-index to appear above other elements. */
 
 .field-row {
   flex-direction: row;
@@ -659,7 +659,8 @@ body {
   list-style: none;
   margin: 0;
   padding: var(--space-xs) 0;
-  z-index: var(--z-dropdown);
+  /* Increased z-index to ensure dropdown appears above all content */
+  z-index: var(--z-popover);
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.15),
     0 4px 8px rgba(0, 0, 0, 0.1);
@@ -891,16 +892,29 @@ body {
   list-style: none;
   margin: 0;
   padding: var(--space-xs) 0;
-  z-index: var(--z-dropdown);
+  /* Increased z-index to ensure combobox menu appears above all content */
+  z-index: var(--z-popover);
   max-height: 240px;
   overflow-y: auto;
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.15),
     0 4px 8px rgba(0, 0, 0, 0.1);
+
+  /* Add smooth animations similar to dropdown */
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scaleY(1);
+  transform-origin: top center;
+  transition:
+    opacity var(--transition-fast),
+    transform var(--transition-fast) cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .combobox-menu[hidden] {
   display: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px) scaleY(0.95);
 }
 
 .combobox-item {

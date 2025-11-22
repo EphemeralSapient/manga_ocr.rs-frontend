@@ -17,7 +17,8 @@ export interface ExtensionSettings {
   geminiThinking: boolean;
   tighterBounds: boolean;
   filterOrphanRegions: boolean;
-  useMask: boolean;
+  useMask?: boolean;  // Legacy support
+  maskMode?: string;  // 'off' | 'fast' | 'accurate'
   mergeImg: boolean;
   batchSize: number;
   sessionLimit: number;
@@ -42,7 +43,8 @@ export interface ProcessConfig {
   geminiThinking: boolean;
   tighterBounds: boolean;
   filterOrphanRegions: boolean;
-  useMask: boolean;
+  useMask?: boolean;  // Legacy support
+  maskMode?: string;  // 'off' | 'fast' | 'accurate'
   mergeImg: boolean;
   batchSize: number;
   sessionLimit: number;

@@ -68,7 +68,9 @@ const el = {
   geminiThinking: document.getElementById('geminiThinking') as HTMLInputElement,
   tighterBounds: document.getElementById('tighterBounds') as HTMLInputElement,
   filterOrphanRegions: document.getElementById('filterOrphanRegions') as HTMLInputElement,
-  useMask: document.getElementById('useMask') as HTMLInputElement,
+  maskModeOff: document.getElementById('maskModeOff') as HTMLButtonElement,
+  maskModeFast: document.getElementById('maskModeFast') as HTMLButtonElement,
+  maskModeAccurate: document.getElementById('maskModeAccurate') as HTMLButtonElement,
   mergeImg: document.getElementById('mergeImg') as HTMLInputElement,
   batchSize: document.getElementById('batchSize') as HTMLInputElement,
   sessionLimit: document.getElementById('sessionLimit') as HTMLInputElement,
@@ -106,6 +108,7 @@ let currentFontSource = 'builtin';
 let currentFontFamily = 'arial';
 let currentGoogleFontFamily = 'Roboto';
 let currentBackgroundType = 'blur';
+let currentMaskMode = 'fast';  // 'off' | 'fast' | 'accurate'
 let currentTargetSize = 640;
 
 // ===== Initialization =====
@@ -181,7 +184,18 @@ async function loadAndApplySettings(): Promise<void> {
     el.geminiThinking.checked = settings.geminiThinking ?? false;
     el.tighterBounds.checked = settings.tighterBounds ?? true;
     el.filterOrphanRegions.checked = settings.filterOrphanRegions ?? false;
-    el.useMask.checked = settings.useMask ?? true;
+
+    // Load mask mode (convert legacy useMask to maskMode if needed)
+    if (settings.maskMode) {
+      currentMaskMode = settings.maskMode;
+    } else if (settings.useMask !== undefined) {
+      // Legacy support: convert useMask boolean to maskMode
+      currentMaskMode = settings.useMask ? 'fast' : 'off';
+    } else {
+      currentMaskMode = 'fast';  // Default
+    }
+    updateMaskModeSelection(currentMaskMode);
+
     el.mergeImg.checked = settings.mergeImg ?? false;
     el.batchSize.value = String(settings.batchSize ?? 5);
     el.sessionLimit.value = String(settings.sessionLimit ?? 8);
@@ -227,7 +241,7 @@ async function saveCurrentSettings(): Promise<void> {
       geminiThinking: el.geminiThinking.checked,
       tighterBounds: el.tighterBounds.checked,
       filterOrphanRegions: el.filterOrphanRegions.checked,
-      useMask: el.useMask.checked,
+      maskMode: currentMaskMode,
       mergeImg: el.mergeImg.checked,
       batchSize: Math.max(1, Math.min(50, parseInt(el.batchSize.value) || 5)),
       sessionLimit: Math.max(1, Math.min(32, parseInt(el.sessionLimit.value) || 8)),
@@ -244,13 +258,9 @@ async function saveCurrentSettings(): Promise<void> {
 }
 
 // ===== Server Toggle Sync =====
-async function syncServerToggle(toggle: 'mask' | 'mergeimg' | 'thinking', showNotification = true): Promise<void> {
-  const endpoint = toggle === 'mask' ? '/mask-toggle' :
-                   toggle === 'mergeimg' ? '/mergeimg-toggle' :
-                   '/thinking-toggle';
-  const toggleName = toggle === 'mask' ? 'Mask mode' :
-                     toggle === 'mergeimg' ? 'Batch inference' :
-                     'Gemini thinking';
+async function syncServerToggle(toggle: 'mergeimg' | 'thinking', showNotification = true): Promise<void> {
+  const endpoint = toggle === 'mergeimg' ? '/mergeimg-toggle' : '/thinking-toggle';
+  const toggleName = toggle === 'mergeimg' ? 'Batch inference' : 'Gemini thinking';
 
   try {
     const response = await fetch(`${serverUrl}${endpoint}`, {
@@ -259,9 +269,7 @@ async function syncServerToggle(toggle: 'mask' | 'mergeimg' | 'thinking', showNo
 
     if (response.ok) {
       const data = await response.json();
-      const enabled = toggle === 'mask' ? data.mask_enabled :
-                      toggle === 'mergeimg' ? data.merge_img_enabled :
-                      data.gemini_thinking_enabled;
+      const enabled = toggle === 'mergeimg' ? data.merge_img_enabled : data.gemini_thinking_enabled;
       console.log(`[Popup] ${toggleName} synced: ${enabled}`);
       if (showNotification) {
         showToast('✓', `${toggleName} ${enabled ? 'enabled' : 'disabled'}`);
@@ -297,19 +305,13 @@ async function checkAndSyncServerSettings(): Promise<void> {
     }
 
     // Compare server state with local settings
-    const needsSyncMask = data.config.mask_enabled !== el.useMask.checked;
     const needsSyncMergeImg = data.config.merge_img_enabled !== el.mergeImg.checked;
     const needsSyncThinking = data.config.gemini_thinking_enabled !== el.geminiThinking.checked;
 
-    if (needsSyncMask || needsSyncMergeImg || needsSyncThinking) {
+    if (needsSyncMergeImg || needsSyncThinking) {
       console.log('[Popup] Server state mismatch detected, syncing frontend settings to server');
 
       // Sync mismatched settings (silently)
-      if (needsSyncMask) {
-        console.log(`  - Mask: server=${data.config.mask_enabled}, local=${el.useMask.checked} → syncing`);
-        await syncServerToggle('mask', false);
-      }
-
       if (needsSyncMergeImg) {
         console.log(`  - MergeImg: server=${data.config.merge_img_enabled}, local=${el.mergeImg.checked} → syncing`);
         await syncServerToggle('mergeimg', false);
@@ -808,10 +810,6 @@ function setupEventListeners(): void {
   el.sessionLimit.addEventListener('change', saveCurrentSettings);
 
   // Server-synced toggles (also update server state)
-  el.useMask.addEventListener('change', async () => {
-    await saveCurrentSettings();
-    await syncServerToggle('mask');
-  });
   el.mergeImg.addEventListener('change', async () => {
     await saveCurrentSettings();
     await syncServerToggle('mergeimg');
@@ -1076,6 +1074,9 @@ function setupCustomDropdown(): void {
   // Setup background type buttons
   setupBackgroundTypeButtons();
 
+  // Setup mask mode buttons
+  setupMaskModeButtons();
+
   // Setup built-in font dropdown
   setupDropdown(el.fontDropdown, el.fontFamily, (value) => {
     currentFontFamily = value;
@@ -1156,6 +1157,55 @@ function updateBackgroundTypeSelection(type: string): void {
     el.blurBgBtn.setAttribute('aria-pressed', 'true');
     el.whiteBgBtn.classList.remove('active');
     el.whiteBgBtn.setAttribute('aria-pressed', 'false');
+  }
+}
+
+function setupMaskModeButtons(): void {
+  el.maskModeOff.addEventListener('click', async () => {
+    if (currentMaskMode !== 'off') {
+      currentMaskMode = 'off';
+      updateMaskModeSelection('off');
+      await saveCurrentSettings();
+    }
+  });
+
+  el.maskModeFast.addEventListener('click', async () => {
+    if (currentMaskMode !== 'fast') {
+      currentMaskMode = 'fast';
+      updateMaskModeSelection('fast');
+      await saveCurrentSettings();
+    }
+  });
+
+  el.maskModeAccurate.addEventListener('click', async () => {
+    if (currentMaskMode !== 'accurate') {
+      currentMaskMode = 'accurate';
+      updateMaskModeSelection('accurate');
+      await saveCurrentSettings();
+    }
+  });
+}
+
+function updateMaskModeSelection(mode: string): void {
+  // Remove active from all
+  el.maskModeOff.classList.remove('active');
+  el.maskModeOff.setAttribute('aria-pressed', 'false');
+  el.maskModeFast.classList.remove('active');
+  el.maskModeFast.setAttribute('aria-pressed', 'false');
+  el.maskModeAccurate.classList.remove('active');
+  el.maskModeAccurate.setAttribute('aria-pressed', 'false');
+
+  // Add active to selected
+  if (mode === 'off') {
+    el.maskModeOff.classList.add('active');
+    el.maskModeOff.setAttribute('aria-pressed', 'true');
+  } else if (mode === 'accurate') {
+    el.maskModeAccurate.classList.add('active');
+    el.maskModeAccurate.setAttribute('aria-pressed', 'true');
+  } else {
+    // Default to fast
+    el.maskModeFast.classList.add('active');
+    el.maskModeFast.setAttribute('aria-pressed', 'true');
   }
 }
 
