@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Manga Text Processor</title>
-  <script type="module" crossorigin src="./assets/popup-DTWUDPiO.js"></script>
-  <link rel="stylesheet" crossorigin href="./styles/popup-CJo7CYSw.css">
+  <script type="module" crossorigin src="./assets/popup-CeoadZ4S.js"></script>
+  <link rel="stylesheet" crossorigin href="./styles/popup-DroTYoDx.css">
 </head>
 <body data-theme="dark">
   <div class="app" role="application" aria-label="Manga Text Processor">
@@ -40,26 +40,37 @@
         <span id="server-url-help" class="sr-only">Enter the URL of your local manga processing server</span>
       </section>
 
-      <!-- Keyboard Shortcut Info -->
-      <section class="shortcut-info" aria-labelledby="shortcut-heading">
-        <h2 id="shortcut-heading" class="sr-only">Process Images</h2>
-        <div class="shortcut-banner">
-          <div class="shortcut-content">
-            <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
-              <div style="display: flex; align-items: center; justify-content: center; gap: var(--space-sm); flex-wrap: wrap;">
-                <kbd class="shortcut-key">Alt</kbd>
-                <span class="shortcut-plus">+</span>
-                <kbd class="shortcut-key">Q</kbd>
-                <span class="shortcut-text" style="margin-left: 4px;">Process all images</span>
-              </div>
-              <div style="display: flex; align-items: center; justify-content: center; gap: var(--space-sm); flex-wrap: wrap;">
-                <kbd class="shortcut-key">Alt</kbd>
-                <span class="shortcut-plus">+</span>
-                <kbd class="shortcut-key">W</kbd>
-                <span class="shortcut-text" style="margin-left: 4px;">Select single image</span>
-              </div>
+      <!-- Quick Actions -->
+      <section class="quick-actions" aria-labelledby="actions-heading">
+        <h2 id="actions-heading" class="sr-only">Quick Actions</h2>
+        <div class="action-buttons">
+          <button type="button" class="action-btn action-btn-primary" id="processAllBtn" aria-label="Process all images on page">
+            <div class="action-btn-content">
+              <svg class="action-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <rect x="3" y="3" width="7" height="7" rx="1"/>
+                <rect x="14" y="3" width="7" height="7" rx="1"/>
+                <rect x="3" y="14" width="7" height="7" rx="1"/>
+                <rect x="14" y="14" width="7" height="7" rx="1"/>
+              </svg>
+              <span class="action-btn-label">Process All</span>
             </div>
-          </div>
+            <div class="action-btn-shortcut">
+              <kbd>Alt</kbd><span>+</span><kbd>Q</kbd>
+            </div>
+          </button>
+          <button type="button" class="action-btn action-btn-secondary" id="selectImageBtn" aria-label="Select and process single image">
+            <div class="action-btn-content">
+              <svg class="action-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <path d="M21 15l-5-5L5 21"/>
+              </svg>
+              <span class="action-btn-label">Select Image</span>
+            </div>
+            <div class="action-btn-shortcut">
+              <kbd>Alt</kbd><span>+</span><kbd>W</kbd>
+            </div>
+          </button>
         </div>
       </section>
 
@@ -118,10 +129,25 @@
             <h3 class="settings-group-title">Translation Settings</h3>
 
             <div class="field">
-              <label class="field-label">
-                Translation Model
-                <span class="field-help">Choose the AI model for translation</span>
-              </label>
+              <div class="field-label-row">
+                <label class="field-label">
+                  Translation Model
+                  <span class="field-help">Choose the AI model for translation</span>
+                </label>
+                <button
+                  type="button"
+                  class="think-chip"
+                  id="geminiThinking"
+                  aria-pressed="true"
+                  title="Enable deep thinking for better quality (slower)"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2a8 8 0 0 1 8 8c0 3.5-2 5.5-4 7v1a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-1c-2-1.5-4-3.5-4-7a8 8 0 0 1 8-8z"/>
+                    <path d="M9 22h6"/>
+                  </svg>
+                  <span>Think</span>
+                </button>
+              </div>
               <div class="button-group" role="group" aria-label="Translation model selection">
                 <button
                   type="button"
@@ -363,6 +389,41 @@
 
           </div>
 
+          <!-- Local OCR Options -->
+          <div class="settings-group accordion-group">
+            <button type="button" class="accordion-header" aria-expanded="false" aria-controls="accordion-ocr">
+              <h3 class="settings-group-title">Local OCR</h3>
+              <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            <div id="accordion-ocr" class="accordion-content" hidden>
+              <div class="field field-row">
+                <label for="localOcr" class="field-label">
+                  Enable Local OCR
+                  <span class="field-help">Use local OCR model for Japanese text recognition (faster, no API usage for OCR)</span>
+                </label>
+                <label class="toggle" aria-label="Toggle local OCR">
+                  <input type="checkbox" id="localOcr">
+                  <span class="toggle-slider" aria-hidden="true"></span>
+                </label>
+              </div>
+
+              <div id="cerebrasOptions" class="conditional-field" hidden>
+                <div class="field field-row">
+                  <label for="useCerebras" class="field-label">
+                    Use Cerebras for Translation
+                    <span class="field-help">Use Cerebras API (~3000 tok/s) instead of Gemini</span>
+                  </label>
+                  <label class="toggle" aria-label="Toggle Cerebras">
+                    <input type="checkbox" id="useCerebras">
+                    <span class="toggle-slider" aria-hidden="true"></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="settings-group accordion-group">
             <button type="button" class="accordion-header" aria-expanded="true" aria-controls="accordion-rendering">
               <h3 class="settings-group-title">Rendering Options</h3>
@@ -469,17 +530,6 @@
               </div>
 
               <div class="field field-row">
-                <label for="geminiThinking" class="field-label">
-                  Gemini Thinking Mode
-                  <span class="field-help">Enable deep thinking for better quality (slower, more tokens)</span>
-                </label>
-                <label class="toggle" aria-label="Toggle Gemini thinking">
-                  <input type="checkbox" id="geminiThinking">
-                  <span class="toggle-slider" aria-hidden="true"></span>
-                </label>
-              </div>
-
-              <div class="field field-row">
                 <label for="tighterBounds" class="field-label">
                   Tighter Bounds
                   <span class="field-help">Use more precise text region boundaries</span>
@@ -515,42 +565,6 @@
               <div id="backendInfo" class="backend-info" style="display: none; margin-bottom: var(--space-md); padding: var(--space-sm); background: var(--bg-secondary); border-radius: var(--radius-md); font-size: var(--text-sm);">
                 <strong>Backend:</strong> <span id="backendType">Unknown</span>
                 <span id="backendAcceleration" style="color: var(--text-secondary);"></span>
-              </div>
-
-              <div class="field">
-                <label class="field-label">
-                  Mask Segmentation
-                  <span class="field-help">Text removal precision and speed</span>
-                </label>
-                <div class="button-group" role="group" aria-label="Mask segmentation mode selection">
-                  <button
-                    type="button"
-                    class="button-group-item"
-                    id="maskModeOff"
-                    data-value="off"
-                    aria-pressed="false"
-                  >
-                    <span>Off</span>
-                  </button>
-                  <button
-                    type="button"
-                    class="button-group-item active"
-                    id="maskModeFast"
-                    data-value="fast"
-                    aria-pressed="true"
-                  >
-                    <span>Fast</span>
-                  </button>
-                  <button
-                    type="button"
-                    class="button-group-item"
-                    id="maskModeAccurate"
-                    data-value="accurate"
-                    aria-pressed="false"
-                  >
-                    <span>Accurate</span>
-                  </button>
-                </div>
               </div>
 
               <div class="field field-row" id="mergeImgField">
@@ -725,6 +739,27 @@
               </div>
             </div>
           </div>
+
+          <div class="settings-group accordion-group">
+            <button type="button" class="accordion-header" aria-expanded="false" aria-controls="accordion-debug">
+              <h3 class="settings-group-title">Debug Options</h3>
+              <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            <div id="accordion-debug" class="accordion-content" hidden>
+              <div class="field field-row">
+                <label for="l1Debug" class="field-label">
+                  L1 Debug Mode
+                  <span class="field-help">Show label 0/1 bounding boxes (BLUE=bubbles, RED=text)</span>
+                </label>
+                <label class="toggle" aria-label="Toggle L1 debug mode">
+                  <input type="checkbox" id="l1Debug">
+                  <span class="toggle-slider" aria-hidden="true"></span>
+                </label>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- API Keys Panel -->
@@ -736,47 +771,96 @@
           tabindex="0"
           hidden>
 
-          <div class="api-keys-header">
-            <h3 class="settings-group-title">Gemini API Keys</h3>
-            <p class="help-text">
-              Add one or more Google Gemini API keys for translation. Keys are rotated automatically.
-            </p>
-            <div class="api-keys-note">
-              <svg class="note-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="16" x2="12" y2="12"></line>
-                <line x1="12" y1="8" x2="12.01" y2="8"></line>
-              </svg>
-              <span>Create each API key in a <strong>different project</strong> to avoid hitting rate limits quickly.</span>
+          <!-- Cerebras API Key Section (shown when Cerebras mode enabled) -->
+          <div id="cerebrasKeySection" class="api-keys-section cerebras-section" hidden>
+            <div class="api-keys-header">
+              <h3 class="settings-group-title">Cerebras API Key</h3>
+              <p class="help-text">
+                Fast translation with Cerebras Cloud (~3000 tokens/sec).
+              </p>
             </div>
+
+            <div class="api-key-item">
+              <div class="api-key-input-wrapper">
+                <input
+                  type="password"
+                  id="cerebrasApiKey"
+                  class="api-key-input"
+                  placeholder="Enter your Cerebras API key"
+                  autocomplete="off">
+                <button
+                  type="button"
+                  id="toggleCerebrasKey"
+                  class="api-key-toggle-visibility"
+                  aria-label="Toggle API key visibility">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="api-keys-footer">
+              <a
+                href="https://cloud.cerebras.ai/"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="link-external">
+                Get Cerebras API Key
+                <svg class="icon-external" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>
+                </svg>
+              </a>
+            </div>
+
+            <div class="section-divider"></div>
           </div>
 
-          <div id="apiKeysList" class="api-keys-list" role="list" aria-label="API Keys"></div>
+          <!-- Gemini API Keys Section -->
+          <div id="geminiKeysSection" class="api-keys-section gemini-section">
+            <div class="api-keys-header">
+              <h3 class="settings-group-title">Gemini API Keys</h3>
+              <p class="help-text">
+                Add one or more Google Gemini API keys for translation. Keys are rotated automatically.
+              </p>
+              <div class="api-keys-note">
+                <svg class="note-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="16" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                <span>Create each API key in a <strong>different project</strong> to avoid hitting rate limits quickly.</span>
+              </div>
+            </div>
 
-          <button
-            id="addApiKey"
-            class="btn-secondary"
-            type="button"
-            aria-label="Add new API key">
-            <svg class="btn-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="12" y1="8" x2="12" y2="16"/>
-              <line x1="8" y1="12" x2="16" y2="12"/>
-            </svg>
-            Add API Key
-          </button>
+            <div id="apiKeysList" class="api-keys-list" role="list" aria-label="API Keys"></div>
 
-          <div class="api-keys-footer">
-            <a
-              href="https://makersuite.google.com/app/apikey"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="link-external">
-              Get API Key from Google AI Studio
-              <svg class="icon-external" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>
+            <button
+              id="addApiKey"
+              class="btn-secondary"
+              type="button"
+              aria-label="Add new API key">
+              <svg class="btn-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="16"/>
+                <line x1="8" y1="12" x2="16" y2="12"/>
               </svg>
-            </a>
+              Add API Key
+            </button>
+
+            <div class="api-keys-footer">
+              <a
+                href="https://makersuite.google.com/app/apikey"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="link-external">
+                Get API Key from Google AI Studio
+                <svg class="icon-external" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>
+                </svg>
+              </a>
+            </div>
           </div>
         </div>
 

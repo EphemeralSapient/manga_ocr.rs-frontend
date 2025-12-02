@@ -65,17 +65,24 @@ const el = {
   textStroke: document.getElementById('textStroke') as HTMLInputElement,
   cache: document.getElementById('cache') as HTMLInputElement,
   metricsDetail: document.getElementById('metricsDetail') as HTMLInputElement,
-  geminiThinking: document.getElementById('geminiThinking') as HTMLInputElement,
+  geminiThinking: document.getElementById('geminiThinking') as HTMLButtonElement,
   tighterBounds: document.getElementById('tighterBounds') as HTMLInputElement,
   filterOrphanRegions: document.getElementById('filterOrphanRegions') as HTMLInputElement,
-  maskModeOff: document.getElementById('maskModeOff') as HTMLButtonElement,
-  maskModeFast: document.getElementById('maskModeFast') as HTMLButtonElement,
-  maskModeAccurate: document.getElementById('maskModeAccurate') as HTMLButtonElement,
   mergeImg: document.getElementById('mergeImg') as HTMLInputElement,
   batchSize: document.getElementById('batchSize') as HTMLInputElement,
   sessionLimit: document.getElementById('sessionLimit') as HTMLInputElement,
   targetSize: document.getElementById('targetSize') as HTMLButtonElement,
   targetSizeDropdown: document.getElementById('targetSizeDropdown')!,
+  l1Debug: document.getElementById('l1Debug') as HTMLInputElement,
+
+  // Local OCR Options
+  localOcr: document.getElementById('localOcr') as HTMLInputElement,
+  cerebrasOptions: document.getElementById('cerebrasOptions')!,
+  useCerebras: document.getElementById('useCerebras') as HTMLInputElement,
+  cerebrasApiKey: document.getElementById('cerebrasApiKey') as HTMLInputElement,
+  toggleCerebrasKey: document.getElementById('toggleCerebrasKey') as HTMLButtonElement,
+  cerebrasKeySection: document.getElementById('cerebrasKeySection')!,
+  geminiKeysSection: document.getElementById('geminiKeysSection')!,
 
   // Backend Info
   backendInfo: document.getElementById('backendInfo')!,
@@ -99,6 +106,10 @@ const el = {
   processingOverlay: document.getElementById('processingOverlay')!,
   processingDetail: document.getElementById('processingDetail')!,
   progressFill: document.getElementById('progressFill')!,
+
+  // Action Buttons
+  processAllBtn: document.getElementById('processAllBtn') as HTMLButtonElement,
+  selectImageBtn: document.getElementById('selectImageBtn') as HTMLButtonElement,
 };
 
 // Current dropdown values
@@ -108,7 +119,6 @@ let currentFontSource = 'builtin';
 let currentFontFamily = 'arial';
 let currentGoogleFontFamily = 'Roboto';
 let currentBackgroundType = 'blur';
-let currentMaskMode = 'fast';  // 'off' | 'fast' | 'accurate'
 let currentTargetSize = 640;
 
 // ===== Initialization =====
@@ -181,20 +191,9 @@ async function loadAndApplySettings(): Promise<void> {
     updateFreeTextFieldsVisibility();
     el.cache.checked = settings.cache;
     el.metricsDetail.checked = settings.metricsDetail;
-    el.geminiThinking.checked = settings.geminiThinking ?? false;
+    el.geminiThinking.setAttribute('aria-pressed', String(settings.geminiThinking ?? true));
     el.tighterBounds.checked = settings.tighterBounds ?? true;
     el.filterOrphanRegions.checked = settings.filterOrphanRegions ?? false;
-
-    // Load mask mode (convert legacy useMask to maskMode if needed)
-    if (settings.maskMode) {
-      currentMaskMode = settings.maskMode;
-    } else if (settings.useMask !== undefined) {
-      // Legacy support: convert useMask boolean to maskMode
-      currentMaskMode = settings.useMask ? 'fast' : 'off';
-    } else {
-      currentMaskMode = 'fast';  // Default
-    }
-    updateMaskModeSelection(currentMaskMode);
 
     el.mergeImg.checked = settings.mergeImg ?? false;
     el.batchSize.value = String(settings.batchSize ?? 5);
@@ -202,6 +201,17 @@ async function loadAndApplySettings(): Promise<void> {
 
     currentTargetSize = settings.targetSize ?? 640;
     setDropdownValue(el.targetSizeDropdown, String(currentTargetSize), (value) => { currentTargetSize = parseInt(value); });
+
+    // Load debug options
+    el.l1Debug.checked = settings.l1Debug ?? false;
+
+    // Load OCR options
+    el.localOcr.checked = settings.localOcr ?? false;
+    el.useCerebras.checked = settings.useCerebras ?? false;
+    el.cerebrasApiKey.value = settings.cerebrasApiKey ?? '';
+
+    // Update OCR conditional visibility (no animation on load)
+    updateOcrOptionsVisibility(false);
 
     // Load API keys
     if (settings.apiKeys && settings.apiKeys.length > 0) {
@@ -238,14 +248,19 @@ async function saveCurrentSettings(): Promise<void> {
       bananaMode: el.bananaMode.checked,
       cache: el.cache.checked,
       metricsDetail: el.metricsDetail.checked,
-      geminiThinking: el.geminiThinking.checked,
+      geminiThinking: el.geminiThinking.getAttribute('aria-pressed') === 'true',
       tighterBounds: el.tighterBounds.checked,
       filterOrphanRegions: el.filterOrphanRegions.checked,
-      maskMode: currentMaskMode,
+      useMask: true,  // Always enabled (UI removed)
+      maskMode: 'fast',  // Always 'fast' (UI removed)
       mergeImg: el.mergeImg.checked,
       batchSize: Math.max(1, Math.min(50, parseInt(el.batchSize.value) || 5)),
       sessionLimit: Math.max(1, Math.min(32, parseInt(el.sessionLimit.value) || 8)),
       targetSize: currentTargetSize,
+      l1Debug: el.l1Debug.checked,
+      localOcr: el.localOcr.checked,
+      useCerebras: el.useCerebras.checked,
+      cerebrasApiKey: el.cerebrasApiKey.value.trim(),
     };
 
     await saveSettings(settings);
@@ -305,8 +320,9 @@ async function checkAndSyncServerSettings(): Promise<void> {
     }
 
     // Compare server state with local settings
+    const localThinkingEnabled = el.geminiThinking.getAttribute('aria-pressed') === 'true';
     const needsSyncMergeImg = data.config.merge_img_enabled !== el.mergeImg.checked;
-    const needsSyncThinking = data.config.gemini_thinking_enabled !== el.geminiThinking.checked;
+    const needsSyncThinking = data.config.gemini_thinking_enabled !== localThinkingEnabled;
 
     if (needsSyncMergeImg || needsSyncThinking) {
       console.log('[Popup] Server state mismatch detected, syncing frontend settings to server');
@@ -318,7 +334,7 @@ async function checkAndSyncServerSettings(): Promise<void> {
       }
 
       if (needsSyncThinking) {
-        console.log(`  - Thinking: server=${data.config.gemini_thinking_enabled}, local=${el.geminiThinking.checked} → syncing`);
+        console.log(`  - Thinking: server=${data.config.gemini_thinking_enabled}, local=${localThinkingEnabled} → syncing`);
         await syncServerToggle('thinking', false);
       }
 
@@ -783,6 +799,32 @@ function showToast(icon: string, message: string, duration = 3000): void {
   }, duration);
 }
 
+// ===== OCR Options Visibility =====
+function updateOcrOptionsVisibility(animateToApiTab = false): void {
+  const localOcrEnabled = el.localOcr.checked;
+  const useCerebrasEnabled = el.useCerebras.checked;
+
+  // Show Cerebras options only when local OCR is enabled
+  el.cerebrasOptions.hidden = !localOcrEnabled;
+
+  // Update API Keys tab sections
+  const cerebrasActive = localOcrEnabled && useCerebrasEnabled;
+
+  // Show/hide Cerebras key section and dim Gemini section
+  el.cerebrasKeySection.hidden = !cerebrasActive;
+  el.geminiKeysSection.classList.toggle('dimmed', cerebrasActive);
+
+  // Animate to API Keys tab when Cerebras is toggled on
+  if (animateToApiTab && cerebrasActive) {
+    setTimeout(() => {
+      switchTab('apiKeys');
+      el.tabApiKeys.classList.add('highlight');
+      setTimeout(() => el.tabApiKeys.classList.remove('highlight'), 600);
+      setTimeout(() => el.cerebrasApiKey.focus(), 300);
+    }, 150);
+  }
+}
+
 // ===== Event Listeners =====
 function setupEventListeners(): void {
   // Server URL
@@ -804,17 +846,41 @@ function setupEventListeners(): void {
   });
   el.cache.addEventListener('change', saveCurrentSettings);
   el.metricsDetail.addEventListener('change', saveCurrentSettings);
-  el.geminiThinking.addEventListener('change', saveCurrentSettings);
   el.tighterBounds.addEventListener('change', saveCurrentSettings);
   el.batchSize.addEventListener('change', saveCurrentSettings);
   el.sessionLimit.addEventListener('change', saveCurrentSettings);
+  el.l1Debug.addEventListener('change', saveCurrentSettings);
+
+  // OCR toggles with conditional visibility
+  el.localOcr.addEventListener('change', () => {
+    updateOcrOptionsVisibility(false);
+    saveCurrentSettings();
+  });
+  el.useCerebras.addEventListener('change', () => {
+    // Animate to API tab when enabling Cerebras
+    const shouldAnimate = el.useCerebras.checked;
+    updateOcrOptionsVisibility(shouldAnimate);
+    saveCurrentSettings();
+  });
+  el.cerebrasApiKey.addEventListener('change', saveCurrentSettings);
+  el.cerebrasApiKey.addEventListener('input', saveCurrentSettings);
+
+  // Toggle Cerebras API key visibility
+  el.toggleCerebrasKey.addEventListener('click', () => {
+    const isPassword = el.cerebrasApiKey.type === 'password';
+    el.cerebrasApiKey.type = isPassword ? 'text' : 'password';
+  });
 
   // Server-synced toggles (also update server state)
   el.mergeImg.addEventListener('change', async () => {
     await saveCurrentSettings();
     await syncServerToggle('mergeimg');
   });
-  el.geminiThinking.addEventListener('change', async () => {
+
+  // Think button toggle
+  el.geminiThinking.addEventListener('click', async () => {
+    const isPressed = el.geminiThinking.getAttribute('aria-pressed') === 'true';
+    el.geminiThinking.setAttribute('aria-pressed', String(!isPressed));
     await saveCurrentSettings();
     await syncServerToggle('thinking');
   });
@@ -855,6 +921,10 @@ function setupEventListeners(): void {
 
   // Setup number input steppers
   setupNumberSteppers();
+
+  // Action Buttons
+  el.processAllBtn.addEventListener('click', () => triggerAction('process-page-images'));
+  el.selectImageBtn.addEventListener('click', () => triggerAction('select-single-image'));
 }
 
 // ===== Number Input Steppers =====
@@ -1043,6 +1113,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     showProcessing(true, msg.details, msg.progress);
   } else if (msg.action === 'processing-complete') {
     showProcessing(false);
+    setActionButtonsLoading(false);
     if (msg.analytics) {
       currentAnalytics = msg.analytics;
       // Reload cumulative stats after processing
@@ -1053,12 +1124,191 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     }
   } else if (msg.action === 'processing-error') {
     showProcessing(false);
+    setActionButtonsLoading(false);
     showToast('✗', msg.error);
   }
 
   sendResponse({ status: 'ok' });
   return false;
 });
+
+// ===== Action Button Trigger =====
+async function triggerAction(command: 'process-page-images' | 'select-single-image'): Promise<void> {
+  console.log(`[Popup] Triggering action: ${command}`);
+
+  try {
+    // Get the active tab
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+    if (!tab?.id) {
+      showToast('⚠️', 'No active tab found');
+      return;
+    }
+
+    // Check if we're on a restricted page
+    const restrictedPrefixes = ['chrome://', 'chrome-extension://', 'edge://', 'about:'];
+    if (tab.url && restrictedPrefixes.some(prefix => tab.url!.startsWith(prefix))) {
+      showToast('⚠️', 'Cannot run on this page');
+      return;
+    }
+
+    // Set loading state
+    setActionButtonsLoading(true);
+
+    // Ensure content script is injected
+    await ensureContentScriptInjected(tab.id);
+
+    // Get current settings
+    const settings = await loadSettings();
+
+    // Determine if using Cerebras (requires local OCR + Cerebras toggle)
+    const usingCerebras = settings.localOcr && settings.useCerebras;
+
+    const config = {
+      serverUrl: settings.serverUrl || 'http://localhost:1420',
+      // Only send Gemini API keys if NOT using Cerebras
+      apiKeys: usingCerebras ? [] : (settings.apiKeys || []),
+      translateModel: settings.translateModel || 'gemini-flash-latest',
+      targetLanguage: settings.targetLanguage || 'English',
+      fontSource: settings.fontSource || 'builtin',
+      fontFamily: settings.fontFamily || 'arial',
+      googleFontFamily: settings.googleFontFamily || 'Roboto',
+      includeFreeText: settings.includeFreeText || false,
+      bananaMode: settings.bananaMode || false,
+      textStroke: settings.textStroke || false,
+      backgroundType: settings.backgroundType || 'blur',
+      cache: settings.cache !== undefined ? settings.cache : true,
+      metricsDetail: settings.metricsDetail !== undefined ? settings.metricsDetail : true,
+      geminiThinking: settings.geminiThinking || false,
+      tighterBounds: settings.tighterBounds !== undefined ? settings.tighterBounds : true,
+      filterOrphanRegions: settings.filterOrphanRegions || false,
+      maskMode: settings.maskMode || 'fast',
+      mergeImg: settings.mergeImg || false,
+      batchSize: settings.batchSize || 5,
+      sessionLimit: settings.sessionLimit || 8,
+      targetSize: settings.targetSize || 640,
+      l1Debug: settings.l1Debug || false,
+      // OCR and Cerebras settings
+      localOcr: settings.localOcr || false,
+      useCerebras: settings.useCerebras || false,
+      cerebrasApiKey: usingCerebras ? (settings.cerebrasApiKey || '') : '',
+    };
+
+    // Send message to content script
+    const action = command === 'select-single-image' ? 'enter-selection-mode' : 'process-images';
+
+    // Close popup for selection mode (user needs to interact with page)
+    if (command === 'select-single-image') {
+      await sendMessageWithTimeout(tab.id, { action, config }, 3000);
+      window.close();
+      return;
+    }
+
+    // For process-all, send message with timeout for initial response
+    // The content script will respond immediately and send progress updates separately
+    const response = await sendMessageWithTimeout<{ success: boolean; error?: string }>(
+      tab.id,
+      { action, config },
+      10000 // 10 second timeout for initial response
+    );
+    console.log('[Popup] Response:', response);
+
+    if (!response?.success) {
+      setActionButtonsLoading(false);
+      showToast('⚠️', response?.error || 'Processing failed');
+    }
+    // Note: Loading state stays on - will be cleared by processing-complete message
+  } catch (error) {
+    console.error('[Popup] Action failed:', error);
+    setActionButtonsLoading(false);
+    showToast('✗', (error as Error).message || 'Action failed');
+  }
+}
+
+/**
+ * Send message to tab with timeout to prevent hanging
+ */
+function sendMessageWithTimeout<T>(
+  tabId: number,
+  message: unknown,
+  timeoutMs: number = 5000
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error('Message timeout - content script not responding'));
+    }, timeoutMs);
+
+    chrome.tabs.sendMessage(tabId, message)
+      .then((response) => {
+        clearTimeout(timeoutId);
+        resolve(response as T);
+      })
+      .catch((error) => {
+        clearTimeout(timeoutId);
+        reject(error);
+      });
+  });
+}
+
+/**
+ * Ensure content script is injected into the tab
+ * This handles pages that were open before the extension was installed/reloaded
+ */
+async function ensureContentScriptInjected(tabId: number): Promise<void> {
+  console.log('[Popup] Checking if content script is loaded...');
+
+  try {
+    // Try to ping the content script with a short timeout
+    await sendMessageWithTimeout(tabId, { action: 'ping' }, 1000);
+    console.log('[Popup] Content script already loaded');
+    return;
+  } catch (error) {
+    console.log('[Popup] Ping failed, will inject script:', (error as Error).message);
+  }
+
+  // Content script not loaded, inject it
+  console.log('[Popup] Injecting content script...');
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['scripts/content.js'],
+    });
+    // Wait for script to initialize
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Verify injection worked
+    try {
+      await sendMessageWithTimeout(tabId, { action: 'ping' }, 2000);
+      console.log('[Popup] Content script injected and verified');
+    } catch {
+      throw new Error('Script injected but not responding');
+    }
+  } catch (injectError) {
+    console.error('[Popup] Failed to inject content script:', injectError);
+    const errorMsg = (injectError as Error).message;
+
+    // Check if the error is related to file:// access
+    if (errorMsg.includes('file://') || errorMsg.includes('File access')) {
+      throw new Error('To use this extension on local files, enable "Allow access to file URLs" in chrome://extensions/');
+    }
+
+    throw new Error('Cannot access this page. Try refreshing.');
+  }
+}
+
+function setActionButtonsLoading(loading: boolean): void {
+  if (loading) {
+    el.processAllBtn.classList.add('loading');
+    el.selectImageBtn.classList.add('loading');
+    el.processAllBtn.disabled = true;
+    el.selectImageBtn.disabled = true;
+  } else {
+    el.processAllBtn.classList.remove('loading');
+    el.selectImageBtn.classList.remove('loading');
+    el.processAllBtn.disabled = false;
+    el.selectImageBtn.disabled = false;
+  }
+}
 
 // ===== Custom Dropdown =====
 function setupCustomDropdown(): void {
@@ -1073,9 +1323,6 @@ function setupCustomDropdown(): void {
 
   // Setup background type buttons
   setupBackgroundTypeButtons();
-
-  // Setup mask mode buttons
-  setupMaskModeButtons();
 
   // Setup built-in font dropdown
   setupDropdown(el.fontDropdown, el.fontFamily, (value) => {
@@ -1157,55 +1404,6 @@ function updateBackgroundTypeSelection(type: string): void {
     el.blurBgBtn.setAttribute('aria-pressed', 'true');
     el.whiteBgBtn.classList.remove('active');
     el.whiteBgBtn.setAttribute('aria-pressed', 'false');
-  }
-}
-
-function setupMaskModeButtons(): void {
-  el.maskModeOff.addEventListener('click', async () => {
-    if (currentMaskMode !== 'off') {
-      currentMaskMode = 'off';
-      updateMaskModeSelection('off');
-      await saveCurrentSettings();
-    }
-  });
-
-  el.maskModeFast.addEventListener('click', async () => {
-    if (currentMaskMode !== 'fast') {
-      currentMaskMode = 'fast';
-      updateMaskModeSelection('fast');
-      await saveCurrentSettings();
-    }
-  });
-
-  el.maskModeAccurate.addEventListener('click', async () => {
-    if (currentMaskMode !== 'accurate') {
-      currentMaskMode = 'accurate';
-      updateMaskModeSelection('accurate');
-      await saveCurrentSettings();
-    }
-  });
-}
-
-function updateMaskModeSelection(mode: string): void {
-  // Remove active from all
-  el.maskModeOff.classList.remove('active');
-  el.maskModeOff.setAttribute('aria-pressed', 'false');
-  el.maskModeFast.classList.remove('active');
-  el.maskModeFast.setAttribute('aria-pressed', 'false');
-  el.maskModeAccurate.classList.remove('active');
-  el.maskModeAccurate.setAttribute('aria-pressed', 'false');
-
-  // Add active to selected
-  if (mode === 'off') {
-    el.maskModeOff.classList.add('active');
-    el.maskModeOff.setAttribute('aria-pressed', 'true');
-  } else if (mode === 'accurate') {
-    el.maskModeAccurate.classList.add('active');
-    el.maskModeAccurate.setAttribute('aria-pressed', 'true');
-  } else {
-    // Default to fast
-    el.maskModeFast.classList.add('active');
-    el.maskModeFast.setAttribute('aria-pressed', 'true');
   }
 }
 

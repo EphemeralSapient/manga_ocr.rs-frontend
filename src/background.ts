@@ -22,6 +22,9 @@ chrome.commands.onCommand.addListener(async (command) => {
         return;
       }
 
+      // Ensure content script is injected
+      await ensureContentScript(tab.id);
+
       // Get saved settings
       const settings = await chrome.storage.sync.get([
         'serverUrl',
@@ -45,11 +48,18 @@ chrome.commands.onCommand.addListener(async (command) => {
         'batchSize',
         'sessionLimit',
         'targetSize',
+        'localOcr',
+        'useCerebras',
+        'cerebrasApiKey',
       ]);
+
+      // Determine if using Cerebras (requires local OCR + Cerebras toggle)
+      const usingCerebras = settings.localOcr && settings.useCerebras;
 
       const config = {
         serverUrl: settings.serverUrl || 'http://localhost:1420',
-        apiKeys: settings.apiKeys || [],
+        // Only send Gemini API keys if NOT using Cerebras
+        apiKeys: usingCerebras ? [] : (settings.apiKeys || []),
         translateModel: settings.translateModel || 'gemini-flash-latest',
         targetLanguage: settings.targetLanguage || 'English',
         fontSource: settings.fontSource || 'builtin',
@@ -61,7 +71,7 @@ chrome.commands.onCommand.addListener(async (command) => {
         backgroundType: settings.backgroundType || 'blur',
         cache: settings.cache !== undefined ? settings.cache : true,
         metricsDetail: settings.metricsDetail !== undefined ? settings.metricsDetail : true,
-        geminiThinking: settings.geminiThinking || false,
+        geminiThinking: settings.geminiThinking ?? true,
         tighterBounds: settings.tighterBounds !== undefined ? settings.tighterBounds : true,
         filterOrphanRegions: settings.filterOrphanRegions || false,
         maskMode: settings.maskMode || 'fast',
@@ -69,6 +79,10 @@ chrome.commands.onCommand.addListener(async (command) => {
         batchSize: settings.batchSize || 5,
         sessionLimit: settings.sessionLimit || 8,
         targetSize: settings.targetSize || 640,
+        localOcr: settings.localOcr || false,
+        useCerebras: settings.useCerebras || false,
+        // Only send Cerebras API key when using Cerebras
+        cerebrasApiKey: usingCerebras ? (settings.cerebrasApiKey || '') : '',
       };
 
       // Send appropriate message to content script
@@ -84,6 +98,122 @@ chrome.commands.onCommand.addListener(async (command) => {
     }
   }
 });
+
+/**
+ * Promise with timeout wrapper
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error('Operation timed out')), ms)
+    )
+  ]);
+}
+
+/**
+ * Ensure content script is loaded in a tab, inject if needed
+ */
+async function ensureContentScript(tabId: number): Promise<void> {
+  // First check if script is already loaded
+  try {
+    const response = await withTimeout(
+      chrome.tabs.sendMessage(tabId, { action: 'ping' }),
+      500
+    );
+    if (response?.loaded) {
+      console.log(`[BACKGROUND] Content script already loaded in tab ${tabId}`);
+      return;
+    }
+  } catch {
+    // Script not loaded, will try to inject
+  }
+
+  // Try to inject the content script
+  console.log(`[BACKGROUND] Injecting content script into tab ${tabId}...`);
+
+  try {
+    // Get tab info to check if it's a valid target
+    const tab = await chrome.tabs.get(tabId);
+    const url = tab.url || '';
+    console.log(`[BACKGROUND] Tab URL: ${url.substring(0, 80)}`);
+
+    // Check for restricted URLs
+    if (!url || url.startsWith('chrome://') || url.startsWith('chrome-extension://')) {
+      throw new Error('Cannot inject into this page type');
+    }
+
+    // Special handling for file:// URLs - provide helpful error message
+    if (url.startsWith('file://')) {
+      console.log(`[BACKGROUND] Detected file:// URL, checking access...`);
+      // Try to inject - if it fails, it's likely due to missing permission
+      // The error will be caught and we'll provide a helpful message
+    }
+
+    // For blob: URLs, executeScript hangs - rely on manifest injection
+    // Just wait a bit and check if manifest already injected it
+    if (url.startsWith('blob:')) {
+      console.log(`[BACKGROUND] Blob URL detected - checking if manifest injected script...`);
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      try {
+        const pingResponse = await withTimeout(
+          chrome.tabs.sendMessage(tabId, { action: 'ping' }),
+          1000
+        );
+        if (pingResponse?.loaded) {
+          console.log(`[BACKGROUND] Content script found in blob URL tab`);
+          return;
+        }
+      } catch {
+        // Script not available
+      }
+
+      throw new Error('Blob URLs require page refresh. Please refresh and try again.');
+    }
+
+    // Inject the script for regular URLs
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['scripts/content.js'],
+    });
+
+    console.log(`[BACKGROUND] Injection result:`, results);
+
+    // Wait for script to initialize and verify it's working
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Verify the script is responding
+    const pingResponse = await withTimeout(
+      chrome.tabs.sendMessage(tabId, { action: 'ping' }),
+      1000
+    );
+
+    if (pingResponse?.loaded) {
+      console.log(`[BACKGROUND] Content script verified in tab ${tabId}`);
+    } else {
+      throw new Error('Script injected but not responding');
+    }
+  } catch (error) {
+    const msg = (error as Error).message;
+    console.error(`[BACKGROUND] Injection failed for tab ${tabId}: ${msg}`);
+
+    // Get tab URL for better error messages
+    try {
+      const tab = await chrome.tabs.get(tabId);
+      const url = tab.url || '';
+
+      // Provide helpful error for file:// URLs
+      if (url.startsWith('file://')) {
+        throw new Error('File access not enabled. Go to chrome://extensions/, find "Manga Text Processor", and enable "Allow access to file URLs"');
+      }
+    } catch (tabError) {
+      // If we can't get the tab, fall through to generic error
+    }
+
+    throw new Error(`Cannot access page: ${msg}`);
+  }
+}
 
 /**
  * Forward messages between content script and popup
@@ -181,7 +311,7 @@ chrome.runtime.onInstalled.addListener((details) => {
       backgroundType: 'blur',
       cache: true,
       metricsDetail: true,
-      geminiThinking: false,
+      geminiThinking: true,
       tighterBounds: true,
       filterOrphanRegions: false,
       maskMode: 'fast',
@@ -190,12 +320,21 @@ chrome.runtime.onInstalled.addListener((details) => {
       sessionLimit: 8,
       targetSize: 640,
       theme: 'auto',
+      localOcr: false,
+      useCerebras: false,
+      cerebrasApiKey: '',
     };
 
     chrome.storage.sync.set(defaultSettings);
     console.log('[BACKGROUND] Default settings initialized');
   }
+
+  // Note: We don't inject into existing tabs here because:
+  // 1. executeScript can hang on inactive/discarded tabs in MV3
+  // 2. Permissions may not be fully applied during onInstalled
+  // Instead, we inject on-demand when user triggers an action
+  console.log('[BACKGROUND] Content scripts will be injected on-demand when needed');
 });
 
 console.log('[BACKGROUND] Service worker ready');
-console.log('[BACKGROUND] Keyboard shortcut: Ctrl+Shift+M (Cmd+Shift+M on Mac)');
+console.log('[BACKGROUND] Keyboard shortcuts: Alt+Q (Process All), Alt+W (Select Image)');

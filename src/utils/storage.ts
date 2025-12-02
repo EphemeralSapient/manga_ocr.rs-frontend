@@ -18,15 +18,20 @@ const DEFAULT_SETTINGS: ExtensionSettings = {
   backgroundType: 'blur',
   cache: true,
   metricsDetail: true,
-  geminiThinking: false,
-  tighterBounds: false,
+  geminiThinking: true,
+  tighterBounds: true,
   filterOrphanRegions: false,
-  maskMode: 'fast', // 'off' | 'fast' | 'accurate'
+  useMask: true,    // Enable mask segmentation
+  maskMode: 'fast', // 'off' | 'fast' (accurate mode removed)
   mergeImg: false,
   batchSize: 5,
   sessionLimit: 8, // Default: will be max(cores/2, 8) on backend
   targetSize: 640, // Default: 640px (range: 0 for source, or [320, 2048])
   theme: 'auto',
+  l1Debug: false,  // Debug mode: show label 0/1 bounding boxes
+  localOcr: false,  // Use local OCR model instead of Gemini
+  useCerebras: false,  // Use Cerebras API for translation (when localOcr=true)
+  cerebrasApiKey: '',  // Cerebras API key
 };
 
 /**

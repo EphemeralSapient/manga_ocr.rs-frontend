@@ -176,60 +176,192 @@ body {
   white-space: nowrap;
 }
 
-/* Keyboard Shortcut Info - Professional Minimal Design */
-.shortcut-info {
+/* ===== Quick Action Buttons - Elegant Professional Design ===== */
+.quick-actions {
   display: flex;
   flex-direction: column;
 }
 
-.shortcut-banner {
-  padding: var(--space-md);
-  background: linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg-card) 100%);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+.action-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
 }
 
-.shortcut-content {
+.action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-lg) var(--space-md);
+  background: linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg-card) 100%);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.action-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.02) 100%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.action-btn:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.15),
+    0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.action-btn:hover::before {
+  opacity: 1;
+}
+
+.action-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.action-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Primary action button - Process All */
+.action-btn-primary {
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.08) 0%,
+    rgba(59, 130, 246, 0.04) 100%
+  );
+  border-color: rgba(59, 130, 246, 0.25);
+}
+
+.action-btn-primary:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.15) 0%,
+    rgba(59, 130, 246, 0.08) 100%
+  );
+  border-color: rgba(59, 130, 246, 0.4);
+  box-shadow:
+    0 8px 24px rgba(59, 130, 246, 0.2),
+    0 2px 8px rgba(59, 130, 246, 0.1);
+}
+
+.action-btn-primary .action-btn-icon {
+  color: var(--primary);
+}
+
+.action-btn-primary .action-btn-label {
+  color: var(--primary);
+}
+
+/* Secondary action button - Select Image */
+.action-btn-secondary {
+  background: linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg-card) 100%);
+}
+
+.action-btn-secondary:hover {
+  background: linear-gradient(
+    135deg,
+    var(--bg-hover) 0%,
+    var(--bg-elevated) 100%
+  );
+}
+
+.action-btn-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.action-btn-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover .action-btn-icon {
+  transform: scale(1.1);
+}
+
+.action-btn-label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  letter-spacing: 0.01em;
+}
+
+.action-btn-shortcut {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: var(--space-sm);
-  flex-wrap: wrap;
+  gap: 3px;
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-base);
+  border-radius: var(--radius-sm);
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
 }
 
-.shortcut-text {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  font-weight: var(--font-medium);
-  user-select: none;
+.action-btn:hover .action-btn-shortcut {
+  opacity: 1;
 }
 
-.shortcut-key {
+.action-btn-shortcut kbd {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  height: 28px;
-  padding: 0 var(--space-sm);
-  background: var(--bg-base);
+  min-width: 20px;
+  height: 18px;
+  padding: 0 5px;
+  background: var(--bg-elevated);
   border: 1px solid var(--border-default);
-  border-bottom: 2px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-sm);
-  font-weight: var(--font-semibold);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: var(--font-bold);
   font-family: var(--font-sans);
-  color: var(--text-primary);
-  box-shadow:
-    0 1px 0 var(--border-subtle),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  user-select: none;
+  color: var(--text-secondary);
+  line-height: 1;
 }
 
-.shortcut-plus {
-  font-size: var(--text-xs);
+.action-btn-shortcut span {
+  font-size: 9px;
   color: var(--text-tertiary);
-  font-weight: var(--font-semibold);
-  user-select: none;
+  font-weight: var(--font-bold);
+}
+
+/* Disabled state for action buttons */
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.action-btn:disabled:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--border-default);
+}
+
+/* Loading state */
+.action-btn.loading {
+  pointer-events: none;
+}
+
+.action-btn.loading .action-btn-icon {
+  animation: pulse 1.5s ease-in-out infinite;
 }
 
 /* ===== Tabs - Enhanced Design ===== */
@@ -1763,4 +1895,103 @@ body {
   font-weight: var(--font-medium);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+/* ===== API Keys Sections (Cerebras/Gemini) ===== */
+.api-keys-section {
+  transition: opacity var(--transition-base), filter var(--transition-base);
+}
+
+.api-keys-section.dimmed {
+  opacity: 0.4;
+  filter: grayscale(40%);
+  pointer-events: none;
+}
+
+.section-divider {
+  height: 1px;
+  background: var(--border-default);
+  margin: var(--space-lg) 0;
+}
+
+.cerebras-section {
+  animation: slideDown var(--transition-base) ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Tab highlight animation */
+.tab-btn.highlight {
+  animation: tabPulse 0.6s ease-out;
+}
+
+@keyframes tabPulse {
+  0%, 100% {
+    box-shadow: none;
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+  }
+}
+
+/* Field label row with inline toggle */
+.field-label-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.field-label-row .field-label {
+  margin-bottom: 0;
+}
+
+.think-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: transparent;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.think-chip svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.think-chip:hover {
+  border-color: var(--border-hover);
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.think-chip[aria-pressed="true"] {
+  background: rgba(168, 85, 247, 0.12);
+  border-color: rgba(168, 85, 247, 0.4);
+  color: rgb(168, 85, 247);
+}
+
+.think-chip[aria-pressed="true"]:hover {
+  background: rgba(168, 85, 247, 0.2);
+  border-color: rgb(168, 85, 247);
 }

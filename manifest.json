@@ -7,6 +7,7 @@
     "activeTab",
     "storage",
     "scripting",
+    "tabs",
     "declarativeNetRequest",
     "declarativeNetRequestWithHostAccess"
   ],
@@ -29,7 +30,10 @@
     {
       "matches": ["<all_urls>"],
       "js": ["scripts/content.js"],
-      "run_at": "document_idle"
+      "run_at": "document_idle",
+      "match_about_blank": true,
+      "match_origin_as_fallback": true,
+      "all_frames": true
     }
   ],
   "action": {

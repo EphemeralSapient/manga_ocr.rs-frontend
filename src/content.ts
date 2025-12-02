@@ -11,7 +11,19 @@ import {
   setCachedImage,
 } from './utils/imageCache';
 
-console.log('[CONTENT] Manga Text Processor: Content script loaded');
+// Guard against duplicate script injection
+declare global {
+  interface Window {
+    __mangaTextProcessorLoaded?: boolean;
+  }
+}
+
+// Check if already loaded - skip listener registration to prevent duplicates
+const isAlreadyLoaded = window.__mangaTextProcessorLoaded === true;
+if (isAlreadyLoaded) {
+  console.log('[CONTENT] Script already loaded, skipping re-initialization');
+}
+window.__mangaTextProcessorLoaded = true;
 
 // Inline statistics storage (avoids module splitting issues)
 async function addSessionStats(sessionAnalytics: {
@@ -19,6 +31,9 @@ async function addSessionStats(sessionAnalytics: {
   total_regions?: number;
   simple_bg_count?: number;
   complex_bg_count?: number;
+  label_0_count?: number;
+  label_1_count?: number;
+  label_2_count?: number;
   api_calls_simple?: number;
   api_calls_complex?: number;
   api_calls_banana?: number;
@@ -37,6 +52,9 @@ async function addSessionStats(sessionAnalytics: {
       totalRegions: 0,
       totalSimpleBg: 0,
       totalComplexBg: 0,
+      totalLabel0: 0,
+      totalLabel1: 0,
+      totalLabel2: 0,
       totalApiCalls: 0,
       totalInputTokens: 0,
       totalOutputTokens: 0,
@@ -51,6 +69,9 @@ async function addSessionStats(sessionAnalytics: {
       totalRegions: current.totalRegions + (sessionAnalytics.total_regions || 0),
       totalSimpleBg: current.totalSimpleBg + (sessionAnalytics.simple_bg_count || 0),
       totalComplexBg: current.totalComplexBg + (sessionAnalytics.complex_bg_count || 0),
+      totalLabel0: (current.totalLabel0 || 0) + (sessionAnalytics.label_0_count || 0),
+      totalLabel1: (current.totalLabel1 || 0) + (sessionAnalytics.label_1_count || 0),
+      totalLabel2: (current.totalLabel2 || 0) + (sessionAnalytics.label_2_count || 0),
       totalApiCalls: current.totalApiCalls +
         (sessionAnalytics.api_calls_simple || 0) +
         (sessionAnalytics.api_calls_complex || 0) +
@@ -76,69 +97,124 @@ let isInSelectionMode = false;
 const processedImages = new Map<HTMLImageElement, string>();
 
 /**
- * Listen for messages from popup or background
+ * Check if an element is visible on the page
+ * Handles position:fixed elements that have null offsetParent
  */
-chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) => {
-  console.log('[CONTENT] Message received:', message);
+function isElementVisible(el: HTMLElement): boolean {
+  // Check if element is in DOM
+  if (!el.isConnected) return false;
 
-  if (message.action === 'process-images' && message.config) {
-    processPageImages(message.config)
-      .then((result) => {
-        sendResponse({ success: true, result });
-      })
-      .catch((error) => {
-        console.error('[CONTENT] Processing error:', error);
-        sendResponse({ success: false, error: error.message });
-      });
-
-    return true; // Async response
-  }
-
-  if (message.action === 'enter-selection-mode' && message.config) {
-    enterSelectionMode(message.config);
-    sendResponse({ success: true });
+  // Check computed style for visibility
+  const style = window.getComputedStyle(el);
+  if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
     return false;
   }
 
-  if (message.action === 'restore-images') {
-    restoreOriginalImages();
-    sendResponse({ success: true });
+  // offsetParent is null for position:fixed, but element is still visible
+  // Also null for body, elements with display:none, or detached elements
+  if (el.offsetParent === null) {
+    // Check if it's position:fixed (which is valid and visible)
+    if (style.position === 'fixed') {
+      return true;
+    }
+    // For other cases, element is likely hidden
+    return false;
   }
 
-  return false;
-});
+  return true;
+}
 
 /**
- * Process images in chunks with controlled parallelism and retry logic
+ * Cleanup on page unload to prevent memory leaks
+ * Handles SPA navigation and page refresh
  */
-async function processImagesInChunks(
+function cleanupOnUnload(): void {
+  processedImages.clear();
+  isProcessing = false;
+  isInSelectionMode = false;
+}
+
+// Register cleanup handlers (only once)
+if (!isAlreadyLoaded) {
+  window.addEventListener('beforeunload', cleanupOnUnload);
+  window.addEventListener('pagehide', cleanupOnUnload);
+
+  // For SPAs: listen for history changes
+  window.addEventListener('popstate', cleanupOnUnload);
+}
+
+/**
+ * Listen for messages from popup or background
+ * Only register if not already loaded to prevent duplicate listeners
+ */
+if (!isAlreadyLoaded) {
+  chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) => {
+    console.log('[CONTENT] Message received:', message);
+
+    // Ping handler - used to check if content script is loaded
+    if (message.action === 'ping') {
+      sendResponse({ success: true, loaded: true });
+      return false;
+    }
+
+    if (message.action === 'process-images' && message.config) {
+      // Respond immediately to prevent popup from hanging
+      // Progress and completion will be sent via runtime.sendMessage
+      if (isProcessing) {
+        sendResponse({ success: false, error: 'Already processing' });
+        return false;
+      }
+
+      // Start processing asynchronously
+      sendResponse({ success: true, started: true });
+
+      // Run processing in background (don't await)
+      processPageImages(message.config)
+        .then((result) => {
+          console.log('[CONTENT] Processing complete:', result);
+          // Completion message is already sent by processPageImages via sendCompletionMessage
+        })
+        .catch((error) => {
+          console.error('[CONTENT] Processing error:', error);
+          // Send error via runtime message
+          chrome.runtime.sendMessage({
+            action: 'processing-error',
+            error: error.message,
+          }).catch(() => {});
+        });
+
+      return false; // Sync response (already sent)
+    }
+
+    if (message.action === 'enter-selection-mode' && message.config) {
+      enterSelectionMode(message.config);
+      sendResponse({ success: true });
+      return false;
+    }
+
+    if (message.action === 'restore-images') {
+      restoreOriginalImages();
+      sendResponse({ success: true });
+    }
+
+    return false;
+  });
+
+  console.log('[CONTENT] Manga Text Processor ready');
+}
+
+/**
+ * Process all images in a single request (no chunking)
+ */
+async function processAllImages(
   imageBlobs: Blob[],
-  imageMappings: Array<{ img: HTMLImageElement; originalSrc: string }>,
+  _imageMappings: Array<{ img: HTMLImageElement; originalSrc: string }>,
   config: ProcessConfig,
   onProgress: (progress: number, details: string) => void
 ): Promise<ServerResult> {
-  const CHUNK_SIZE = 10; // Process 10 images per chunk
-  const MAX_CONCURRENT_CHUNKS = 3; // Process 3 chunks in parallel
-  const MAX_RETRIES = 2; // Retry failed chunks up to 2 times
+  console.log(`[CONTENT] Processing all ${imageBlobs.length} images in a single request`);
 
-  // Split images into chunks
-  const chunks: Array<{
-    blobs: Blob[];
-    mappings: Array<{ img: HTMLImageElement; originalSrc: string }>;
-    startIndex: number;
-  }> = [];
-
-  for (let i = 0; i < imageBlobs.length; i += CHUNK_SIZE) {
-    chunks.push({
-      blobs: imageBlobs.slice(i, i + CHUNK_SIZE),
-      mappings: imageMappings.slice(i, i + CHUNK_SIZE),
-      startIndex: i,
-    });
-  }
-
-  console.log(`[CONTENT] Split ${imageBlobs.length} images into ${chunks.length} chunks`);
-
-  // Build server config once (shared across all chunks)
+  // Build server config
   const serverConfig: Record<string, unknown> = {
     apiKeys: config.apiKeys,
     ocr_translation_model: config.translateModel,
@@ -157,6 +233,10 @@ async function processImagesInChunks(
     mergeImg: config.mergeImg,
     sessionLimit: config.sessionLimit,
     targetSize: config.targetSize,
+    l1Debug: config.l1Debug,
+    ocr: config.localOcr,
+    useCerebras: config.useCerebras,
+    cerebrasApiKey: config.cerebrasApiKey,
   };
 
   // Only include relevant font configuration based on source
@@ -166,158 +246,47 @@ async function processImagesInChunks(
     serverConfig.font_family = config.fontFamily;
   }
 
-  // Process a single chunk with retry logic
-  const processChunk = async (
-    chunk: typeof chunks[0],
-    chunkIndex: number,
-    retryCount: number = 0
-  ): Promise<ServerResult> => {
-    const formData = new FormData();
-
-    // Add images from this chunk
-    chunk.blobs.forEach((blob, index) => {
-      formData.append('images', blob, `image_${chunk.startIndex + index}.png`);
-    });
-
-    // Add config
-    formData.append('config', JSON.stringify(serverConfig));
-
-    // Timeout per chunk: 60 seconds (less than full batch since smaller)
-    const processController = new AbortController();
-    const processTimeoutId = setTimeout(() => processController.abort(), 60000);
-
-    try {
-      const response = await fetch(`${config.serverUrl}/process`, {
-        method: 'POST',
-        body: formData,
-        signal: processController.signal,
-      });
-
-      clearTimeout(processTimeoutId);
-
-      if (!response.ok) {
-        throw new Error(`Server error: ${response.status} ${response.statusText}`);
-      }
-
-      const result: ServerResult = await response.json();
-      console.log(`[CONTENT] Chunk ${chunkIndex + 1}/${chunks.length} completed successfully`);
-      return result;
-    } catch (error) {
-      clearTimeout(processTimeoutId);
-
-      // Retry logic
-      if (retryCount < MAX_RETRIES) {
-        console.warn(
-          `[CONTENT] Chunk ${chunkIndex + 1} failed (attempt ${retryCount + 1}/${MAX_RETRIES + 1}), retrying...`,
-          error
-        );
-        await new Promise((resolve) => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
-        return processChunk(chunk, chunkIndex, retryCount + 1);
-      }
-
-      // Max retries exceeded
-      console.error(`[CONTENT] Chunk ${chunkIndex + 1} failed after ${MAX_RETRIES + 1} attempts:`, error);
-      throw error;
-    }
-  };
-
-  // Process chunks with controlled concurrency
-  const results: ServerResult[] = [];
-  let completedChunks = 0;
-  let failedChunks = 0;
-
-  // Process chunks in batches of MAX_CONCURRENT_CHUNKS
-  for (let i = 0; i < chunks.length; i += MAX_CONCURRENT_CHUNKS) {
-    const chunkBatch = chunks.slice(i, i + MAX_CONCURRENT_CHUNKS);
-    const batchPromises = chunkBatch.map((chunk, batchIndex) => {
-      const chunkIndex = i + batchIndex;
-      return processChunk(chunk, chunkIndex)
-        .then((result) => {
-          completedChunks++;
-          const progressPercent = 40 + Math.round((completedChunks / chunks.length) * 50);
-          onProgress(
-            progressPercent,
-            `Processing chunk ${completedChunks}/${chunks.length} (${chunk.blobs.length} images)...`
-          );
-          return { success: true, result };
-        })
-        .catch((error) => {
-          failedChunks++;
-          console.error(`[CONTENT] Chunk ${chunkIndex + 1} permanently failed:`, error);
-          return { success: false, error, chunkIndex };
-        });
-    });
-
-    // Wait for this batch to complete before starting next batch
-    const batchResults = await Promise.all(batchPromises);
-    batchResults.forEach((batchResult) => {
-      if (batchResult.success && 'result' in batchResult) {
-        results.push(batchResult.result);
-      }
-    });
-  }
-
-  if (results.length === 0) {
-    throw new Error(`All ${chunks.length} chunks failed to process`);
-  }
-
-  if (failedChunks > 0) {
-    console.warn(`[CONTENT] ${failedChunks} chunk(s) failed, ${results.length} succeeded`);
-  }
-
-  // Merge all chunk results into a single ServerResult
-  const mergedResult: ServerResult = {
-    results: [],
-    analytics: {
-      total_images: 0,
-      total_regions: 0,
-      simple_bg_count: 0,
-      complex_bg_count: 0,
-      api_calls_simple: 0,
-      api_calls_complex: 0,
-      api_calls_banana: 0,
-      input_tokens: 0,
-      output_tokens: 0,
-      cache_hits: 0,
-      cache_misses: 0,
-      total_time_ms: 0,
-      phase1_time_ms: 0,
-      phase2_time_ms: 0,
-    },
-  };
-
-  // Aggregate results and analytics from all successful chunks
-  results.forEach((chunkResult) => {
-    if (chunkResult.results && mergedResult.results) {
-      mergedResult.results.push(...chunkResult.results);
-    }
-
-    if (chunkResult.analytics) {
-      const analytics = mergedResult.analytics!;
-      const chunkAnalytics = chunkResult.analytics;
-
-      analytics.total_images = (analytics.total_images || 0) + (chunkAnalytics.total_images || 0);
-      analytics.total_regions = (analytics.total_regions || 0) + (chunkAnalytics.total_regions || 0);
-      analytics.simple_bg_count = (analytics.simple_bg_count || 0) + (chunkAnalytics.simple_bg_count || 0);
-      analytics.complex_bg_count = (analytics.complex_bg_count || 0) + (chunkAnalytics.complex_bg_count || 0);
-      analytics.api_calls_simple = (analytics.api_calls_simple || 0) + (chunkAnalytics.api_calls_simple || 0);
-      analytics.api_calls_complex = (analytics.api_calls_complex || 0) + (chunkAnalytics.api_calls_complex || 0);
-      analytics.api_calls_banana = (analytics.api_calls_banana || 0) + (chunkAnalytics.api_calls_banana || 0);
-      analytics.input_tokens = (analytics.input_tokens || 0) + (chunkAnalytics.input_tokens || 0);
-      analytics.output_tokens = (analytics.output_tokens || 0) + (chunkAnalytics.output_tokens || 0);
-      analytics.cache_hits = (analytics.cache_hits || 0) + (chunkAnalytics.cache_hits || 0);
-      analytics.cache_misses = (analytics.cache_misses || 0) + (chunkAnalytics.cache_misses || 0);
-
-      // For time metrics, use the maximum (chunks run in parallel)
-      analytics.total_time_ms = Math.max(analytics.total_time_ms || 0, chunkAnalytics.total_time_ms || 0);
-      analytics.phase1_time_ms = Math.max(analytics.phase1_time_ms || 0, chunkAnalytics.phase1_time_ms || 0);
-      analytics.phase2_time_ms = Math.max(analytics.phase2_time_ms || 0, chunkAnalytics.phase2_time_ms || 0);
-    }
+  // Build FormData with all images
+  const formData = new FormData();
+  imageBlobs.forEach((blob, index) => {
+    formData.append('images', blob, `image_${index}.png`);
   });
+  formData.append('config', JSON.stringify(serverConfig));
 
-  console.log(`[CONTENT] Merged results from ${results.length} chunks, total images: ${mergedResult.results?.length || 0}`);
+  onProgress(40, `Sending ${imageBlobs.length} images to server...`);
 
-  return mergedResult;
+  // Send to server with generous timeout (5 minutes for large batches)
+  const processController = new AbortController();
+  const processTimeoutId = setTimeout(() => processController.abort(), 300000);
+
+  try {
+    const response = await fetch(`${config.serverUrl}/process`, {
+      method: 'POST',
+      body: formData,
+      signal: processController.signal,
+    });
+
+    clearTimeout(processTimeoutId);
+
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status} ${response.statusText}`);
+    }
+
+    onProgress(80, 'Processing on server...');
+
+    const result: ServerResult = await response.json();
+    console.log(`[CONTENT] Successfully processed all ${imageBlobs.length} images`);
+
+    return result;
+  } catch (error) {
+    clearTimeout(processTimeoutId);
+
+    if ((error as Error).name === 'AbortError') {
+      throw new Error('Processing timeout after 5 minutes');
+    }
+
+    throw error;
+  }
 }
 
 /**
@@ -332,10 +301,15 @@ async function processPageImages(config: ProcessConfig) {
   console.log('[CONTENT] Starting page image processing...');
   console.log('[CONTENT] Config:', config);
 
-  // Check if API keys are configured
-  if (!config.apiKeys || config.apiKeys.length === 0) {
+  // Check if API keys are configured (allow Cerebras mode without Gemini keys)
+  const usingCerebras = config.localOcr && config.useCerebras;
+  if (!usingCerebras && (!config.apiKeys || config.apiKeys.length === 0)) {
     showNotification('API keys required', 'error', 'Open extension settings and add your Gemini API keys to enable translation.');
     throw new Error('No API keys configured');
+  }
+  if (usingCerebras && !config.cerebrasApiKey) {
+    showNotification('Cerebras API key required', 'error', 'Open extension settings and add your Cerebras API key to use Cerebras translation.');
+    throw new Error('No Cerebras API key configured');
   }
 
   // Check server connection
@@ -371,10 +345,11 @@ async function processPageImages(config: ProcessConfig) {
     console.log(`[CONTENT] Found ${allImages.length} total images`);
 
     // Filter for large images (likely manga/comic images)
+    // Minimum 200px on each axis (width and height)
     const largeImages = allImages.filter((img) => {
       const rect = img.getBoundingClientRect();
-      const isVisible = rect.width > 200 && rect.height > 200 && img.offsetParent !== null;
-      return isVisible && img.naturalWidth > 200 && img.naturalHeight > 200;
+      const isVisible = rect.width >= 200 && rect.height >= 200 && isElementVisible(img);
+      return isVisible && img.naturalWidth >= 200 && img.naturalHeight >= 200;
     });
 
     console.log(`[CONTENT] Filtered to ${largeImages.length} large images`);
@@ -390,20 +365,29 @@ async function processPageImages(config: ProcessConfig) {
       undefined,
       true
     );
-    sendProgressUpdate(0, `Converting and hashing ${largeImages.length} images...`);
 
-    // Convert images to blobs and hash them in parallel
+    const initialMessage = config.cache
+      ? `Converting and hashing ${largeImages.length} images...`
+      : `Converting ${largeImages.length} images...`;
+    sendProgressUpdate(0, initialMessage);
+
+    // Convert images to blobs and optionally hash them for caching
     const imageBlobs: Blob[] = [];
     const imageMappings: Array<{ img: HTMLImageElement; originalSrc: string }> = [];
     const imageHashes: string[] = [];
 
-    // Parallelize image conversion and hashing
+    // Parallelize image conversion (and hashing if cache enabled)
     const conversionPromises = largeImages.map((img, index) =>
       imageToBlob(img)
         .then(async (blob) => {
-          // Hash the blob for cache lookup
-          const hash = await hashImageBlob(blob);
-          console.log(`[CONTENT] Converted and hashed image ${index + 1}/${largeImages.length} (${hash.substring(0, 8)}...)`);
+          let hash = '';
+          // Only hash if caching is enabled
+          if (config.cache) {
+            hash = await hashImageBlob(blob);
+            console.log(`[CONTENT] Converted and hashed image ${index + 1}/${largeImages.length} (${hash.substring(0, 8)}...)`);
+          } else {
+            console.log(`[CONTENT] Converted image ${index + 1}/${largeImages.length}`);
+          }
           return { blob, img, hash, index };
         })
         .catch((error) => {
@@ -431,77 +415,88 @@ async function processPageImages(config: ProcessConfig) {
       throw new Error('Failed to convert any images');
     }
 
-    // Check cache for already processed images
-    sendProgressUpdate(25, 'Checking cache...');
-    const configHash = hashConfig(config as unknown as Record<string, unknown>);
-    const cacheChecks = imageHashes.map((hash) => getCachedImage(hash, configHash));
-    const cachedResults = await Promise.all(cacheChecks);
-
-    // Separate cached and uncached images
-    const uncachedIndices: number[] = [];
-    const uncachedBlobs: Blob[] = [];
-    const uncachedMappings: Array<{ img: HTMLImageElement; originalSrc: string }> = [];
-    const uncachedHashes: string[] = [];
+    // Variables for tracking cache hits
     let cacheHits = 0;
+    let uncachedBlobs = imageBlobs;
+    let uncachedMappings = imageMappings;
+    let uncachedHashes = imageHashes;
 
-    cachedResults.forEach((cached, index) => {
-      if (cached) {
-        // Apply cached image immediately
-        const { img, originalSrc } = imageMappings[index];
-        processedImages.set(img, originalSrc);
-        img.src = cached;
-        img.dataset.processed = 'true';
-        cacheHits++;
-      } else {
-        // Need to process this image
-        uncachedIndices.push(index);
-        uncachedBlobs.push(imageBlobs[index]);
-        uncachedMappings.push(imageMappings[index]);
-        uncachedHashes.push(imageHashes[index]);
+    // Check cache for already processed images (only if cache enabled)
+    if (config.cache) {
+      sendProgressUpdate(25, 'Checking cache...');
+      const configHash = hashConfig(config as unknown as Record<string, unknown>);
+      const cacheChecks = imageHashes.map((hash) => getCachedImage(hash, configHash));
+      const cachedResults = await Promise.all(cacheChecks);
+
+      // Separate cached and uncached images
+      const uncachedIndices: number[] = [];
+      uncachedBlobs = [];
+      uncachedMappings = [];
+      uncachedHashes = [];
+
+      cachedResults.forEach((cached, index) => {
+        if (cached) {
+          // Apply cached image immediately
+          const { img, originalSrc } = imageMappings[index];
+          processedImages.set(img, originalSrc);
+          img.src = cached;
+          img.dataset.processed = 'true';
+          cacheHits++;
+        } else {
+          // Need to process this image
+          uncachedIndices.push(index);
+          uncachedBlobs.push(imageBlobs[index]);
+          uncachedMappings.push(imageMappings[index]);
+          uncachedHashes.push(imageHashes[index]);
+        }
+      });
+
+      console.log(`[CONTENT] Cache: ${cacheHits} hits, ${uncachedBlobs.length} misses`);
+
+      if (cacheHits > 0) {
+        showNotification(
+          `Cache hit: ${cacheHits} image${cacheHits !== 1 ? 's' : ''} loaded from cache`,
+          'info',
+          undefined,
+          false
+        );
       }
-    });
 
-    console.log(`[CONTENT] Cache: ${cacheHits} hits, ${uncachedBlobs.length} misses`);
+      if (uncachedBlobs.length === 0) {
+        // All images were cached!
+        sendProgressUpdate(100, 'Complete (all from cache)!');
+        dismissProcessing();
 
-    if (cacheHits > 0) {
-      showNotification(
-        `Cache hit: ${cacheHits} image${cacheHits !== 1 ? 's' : ''} loaded from cache`,
-        'info',
-        undefined,
-        false
-      );
+        showNotification(
+          `${imageBlobs.length} image${imageBlobs.length !== 1 ? 's' : ''} loaded from cache`,
+          'success',
+          'No server processing required',
+          false
+        );
+
+        return {
+          processed: imageBlobs.length,
+          analytics: { total_images: imageBlobs.length },
+        };
+      }
     }
 
-    if (uncachedBlobs.length === 0) {
-      // All images were cached!
-      sendProgressUpdate(100, 'Complete (all from cache)!');
-      dismissProcessing();
+    // Process all images in a single request
+    const progressMessage = config.cache
+      ? `Processing ${uncachedBlobs.length} uncached images...`
+      : `Processing ${uncachedBlobs.length} images...`;
+    sendProgressUpdate(30, progressMessage);
 
-      showNotification(
-        `${imageBlobs.length} image${imageBlobs.length !== 1 ? 's' : ''} loaded from cache`,
-        'success',
-        'No server processing required',
-        false
-      );
-
-      return {
-        processed: imageBlobs.length,
-        analytics: { total_images: imageBlobs.length },
-      };
-    }
-
-    // Process uncached images in chunks with controlled parallelism
-    sendProgressUpdate(30, `Processing ${uncachedBlobs.length} uncached images in chunks...`);
-
-    const result = await processImagesInChunks(
+    const result = await processAllImages(
       uncachedBlobs,
       uncachedMappings,
       config,
       (progress, details) => sendProgressUpdate(progress, details)
     );
 
-    // Cache newly processed images
-    if (result.results && result.results.length > 0) {
+    // Cache newly processed images (only if cache enabled)
+    if (config.cache && result.results && result.results.length > 0) {
+      const configHash = hashConfig(config as unknown as Record<string, unknown>);
       const cachingPromises = result.results.map((pageResult, index) => {
         if (pageResult.success && pageResult.data_url) {
           const hash = uncachedHashes[index];
@@ -554,8 +549,8 @@ async function processPageImages(config: ProcessConfig) {
       // Detailed metrics - comprehensive view
       const lines: string[] = [];
 
-      // Cache info
-      if (cacheHits > 0) {
+      // Cache info (only if cache enabled and there were hits)
+      if (config.cache && cacheHits > 0) {
         lines.push(`${cacheHits} from cache, ${appliedCount} newly processed`);
       }
 
@@ -613,7 +608,7 @@ async function processPageImages(config: ProcessConfig) {
         ? (analytics.total_time_ms / 1000).toFixed(1)
         : null;
       let simpleDetail = durationSecs ? `Completed in ${durationSecs}s` : undefined;
-      if (cacheHits > 0) {
+      if (config.cache && cacheHits > 0) {
         simpleDetail = simpleDetail
           ? `${simpleDetail} (${cacheHits} from cache)`
           : `${cacheHits} from cache`;
@@ -651,7 +646,7 @@ async function processPageImages(config: ProcessConfig) {
 }
 
 /**
- * Convert img element to blob using background script (bypasses CORS)
+ * Convert img element to blob using direct canvas access
  * OPTIMIZED: Skip unnecessary PNG conversion - backend accepts all image formats
  */
 async function imageToBlob(img: HTMLImageElement): Promise<Blob> {
@@ -674,10 +669,24 @@ async function imageToBlob(img: HTMLImageElement): Promise<Blob> {
     const blob = await convertImageDirectly(img);
     if (blob) return blob;
   } catch (e) {
-    // Falls through to background fetch if CORS blocks direct access
+    console.log('[CONTENT] Direct canvas conversion failed, trying CORS reload:', e);
   }
 
-  // Use background script to fetch (bypasses CORS)
+  // If direct conversion failed (likely CORS issue), try reloading with CORS
+  // The extension's declarativeNetRequest rules will add CORS headers
+  console.log('[CONTENT] Attempting to reload image with CORS headers:', imageUrl);
+  const corsImg = await loadImageWithCORS(imageUrl);
+  if (corsImg) {
+    const blob = await convertImageDirectly(corsImg);
+    if (blob) {
+      console.log('[CONTENT] Successfully converted image after CORS reload');
+      return blob;
+    }
+  }
+
+  // Last resort: use background script to fetch (bypasses CORS)
+  // This should rarely be needed with the CORS reload approach
+  console.log('[CONTENT] Falling back to background fetch for:', imageUrl);
   const response = await chrome.runtime.sendMessage({
     action: 'fetch-image',
     url: imageUrl,
@@ -707,9 +716,17 @@ async function convertImageDirectly(img: HTMLImageElement): Promise<Blob | null>
         if (ctx) {
           ctx.drawImage(img, 0, 0);
           // Use WebP for better compression (smaller upload size, faster)
+          // Add timeout to prevent hanging
+          const timeoutId = setTimeout(() => resolve(null), 5000);
           canvas.convertToBlob({ type: 'image/webp', quality: 0.95 })
-            .then(resolve)
-            .catch(() => resolve(null));
+            .then((blob) => {
+              clearTimeout(timeoutId);
+              resolve(blob);
+            })
+            .catch(() => {
+              clearTimeout(timeoutId);
+              resolve(null);
+            });
           return;
         }
       }
@@ -729,13 +746,49 @@ async function convertImageDirectly(img: HTMLImageElement): Promise<Blob | null>
       ctx.drawImage(img, 0, 0);
 
       // Use WebP for better compression
+      // Add timeout to prevent hanging if toBlob never calls the callback
+      const timeoutId = setTimeout(() => resolve(null), 5000);
+      let callbackInvoked = false;
+
       canvas.toBlob((blob) => {
+        if (callbackInvoked) return;
+        callbackInvoked = true;
+        clearTimeout(timeoutId);
         resolve(blob);
       }, 'image/webp', 0.95);
     } catch (e) {
-      // CORS tainted canvas
+      // CORS tainted canvas or other error
       resolve(null);
     }
+  });
+}
+
+/**
+ * Load image with CORS enabled to allow canvas extraction
+ * Creates a new Image element with crossorigin attribute
+ */
+async function loadImageWithCORS(imageUrl: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+
+    const timeoutId = setTimeout(() => {
+      img.onload = null;
+      img.onerror = null;
+      resolve(null);
+    }, 10000);
+
+    img.onload = () => {
+      clearTimeout(timeoutId);
+      resolve(img);
+    };
+
+    img.onerror = () => {
+      clearTimeout(timeoutId);
+      resolve(null);
+    };
+
+    img.src = imageUrl;
   });
 }
 
@@ -744,18 +797,27 @@ async function convertImageDirectly(img: HTMLImageElement): Promise<Blob | null>
  * OPTIMIZED: Use typed array for better performance
  */
 function dataUrlToBlob(dataUrl: string): Blob {
-  const parts = dataUrl.split(',');
-  const mimeMatch = parts[0].match(/:(.*?);/);
-  const mime = mimeMatch ? mimeMatch[1] : 'image/png';
-  const bstr = atob(parts[1]);
-  const n = bstr.length;
-  const u8arr = new Uint8Array(n);
+  try {
+    const parts = dataUrl.split(',');
+    if (parts.length < 2) {
+      throw new Error('Invalid data URL format');
+    }
+    const mimeMatch = parts[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+    const bstr = atob(parts[1]);
+    const n = bstr.length;
+    const u8arr = new Uint8Array(n);
 
-  for (let i = 0; i < n; i++) {
-    u8arr[i] = bstr.charCodeAt(i);
+    for (let i = 0; i < n; i++) {
+      u8arr[i] = bstr.charCodeAt(i);
+    }
+
+    return new Blob([u8arr], { type: mime });
+  } catch (error) {
+    console.error('[CONTENT] Failed to convert data URL to blob:', error);
+    // Return empty blob as fallback to prevent crash
+    return new Blob([], { type: 'image/png' });
   }
-
-  return new Blob([u8arr], { type: mime });
 }
 
 /**
@@ -1168,11 +1230,12 @@ function enterSelectionMode(config: ProcessConfig): void {
   document.body.appendChild(overlay);
 
   // Find all images
+  // Minimum 200px on each axis (width and height)
   const allImages = Array.from(document.querySelectorAll<HTMLImageElement>('img'));
   const largeImages = allImages.filter((img) => {
     const rect = img.getBoundingClientRect();
-    return rect.width > 200 && rect.height > 200 && img.offsetParent !== null &&
-           img.naturalWidth > 200 && img.naturalHeight > 200;
+    return rect.width >= 200 && rect.height >= 200 && isElementVisible(img) &&
+           img.naturalWidth >= 200 && img.naturalHeight >= 200;
   });
 
   console.log(`[CONTENT] Found ${largeImages.length} selectable images`);
@@ -1267,9 +1330,14 @@ async function processSingleImage(img: HTMLImageElement, config: ProcessConfig):
 
   console.log('[CONTENT] Processing single image...');
 
-  // Check if API keys are configured
-  if (!config.apiKeys || config.apiKeys.length === 0) {
+  // Check if API keys are configured (allow Cerebras mode without Gemini keys)
+  const usingCerebras = config.localOcr && config.useCerebras;
+  if (!usingCerebras && (!config.apiKeys || config.apiKeys.length === 0)) {
     showNotification('API keys required', 'error', 'Open extension settings and add your Gemini API keys to enable translation.');
+    return;
+  }
+  if (usingCerebras && !config.cerebrasApiKey) {
+    showNotification('Cerebras API key required', 'error', 'Open extension settings and add your Cerebras API key to use Cerebras translation.');
     return;
   }
 
@@ -1335,6 +1403,11 @@ async function processSingleImage(img: HTMLImageElement, config: ProcessConfig):
       maskMode: config.maskMode || 'fast',
       mergeImg: config.mergeImg,
       sessionLimit: config.sessionLimit,
+      targetSize: config.targetSize,
+      l1Debug: config.l1Debug,
+      ocr: config.localOcr,
+      useCerebras: config.useCerebras,
+      cerebrasApiKey: config.cerebrasApiKey,
     };
 
     // Only include relevant font configuration based on source
@@ -1440,5 +1513,3 @@ async function processSingleImage(img: HTMLImageElement, config: ProcessConfig):
     isProcessing = false;
   }
 }
-
-console.log('[CONTENT] Content script ready');

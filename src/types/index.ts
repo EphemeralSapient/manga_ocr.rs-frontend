@@ -17,13 +17,17 @@ export interface ExtensionSettings {
   geminiThinking: boolean;
   tighterBounds: boolean;
   filterOrphanRegions: boolean;
-  useMask?: boolean;  // Legacy support
-  maskMode?: string;  // 'off' | 'fast' | 'accurate'
+  useMask?: boolean;  // Enable/disable mask segmentation
+  maskMode?: string;  // 'off' | 'fast' (accurate mode removed)
   mergeImg: boolean;
   batchSize: number;
   sessionLimit: number;
   targetSize: number;
   theme?: 'light' | 'dark' | 'auto';
+  l1Debug?: boolean;  // Debug mode: show label 0/1 bounding boxes
+  localOcr?: boolean;  // Use local OCR model instead of Gemini
+  useCerebras?: boolean;  // Use Cerebras API for translation (when localOcr=true)
+  cerebrasApiKey?: string;  // Cerebras API key
 }
 
 export interface ProcessConfig {
@@ -43,12 +47,16 @@ export interface ProcessConfig {
   geminiThinking: boolean;
   tighterBounds: boolean;
   filterOrphanRegions: boolean;
-  useMask?: boolean;  // Legacy support
-  maskMode?: string;  // 'off' | 'fast' | 'accurate'
+  useMask?: boolean;  // Enable/disable mask segmentation
+  maskMode?: string;  // 'off' | 'fast' (accurate mode removed)
   mergeImg: boolean;
   batchSize: number;
   sessionLimit: number;
   targetSize: number;
+  l1Debug?: boolean;  // Debug mode: show label 0/1 bounding boxes
+  localOcr?: boolean;  // Use local OCR model instead of Gemini
+  useCerebras?: boolean;  // Use Cerebras API for translation (when localOcr=true)
+  cerebrasApiKey?: string;  // Cerebras API key
 }
 
 export interface Analytics {
